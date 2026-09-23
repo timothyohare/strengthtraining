@@ -4,7 +4,10 @@ export interface LiftState {
   increment: number;
   /** Round weights (e.g. after a deload) to the nearest multiple of this. */
   roundTo: number;
-  setCount: 5 | 3;
+  // Not strictly 5|3: Deadlift's classic program uses a single work set (1).
+  // See docs/todo.md §2 "known gap" -- the double-deload fallback below
+  // assumes a 5-set lift and isn't correct for Deadlift yet.
+  setCount: number;
   /** Consecutive failed sessions on this lift, resets on any success. */
   failStreak: number;
   /** How many times this lift has been deloaded, ever. */

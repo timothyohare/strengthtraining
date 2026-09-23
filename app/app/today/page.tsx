@@ -6,6 +6,7 @@ import { nextWorkoutType } from "@/lib/program-engine/schedule";
 import { REPS_PER_SET, WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
 import { generateWarmupSets } from "@/lib/program-engine/warmup";
 import { calculatePlates } from "@/lib/program-engine/plates";
+import { WorkoutSession } from "./WorkoutSession";
 
 // Not yet configurable (docs/todo.md §6 Settings screen) -- standard US lb
 // bar + plate set, hardcoded for now.
@@ -65,49 +66,62 @@ export default async function TodayPage() {
           .
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
-          {liftsForToday.map((lift) => {
-            const warmups = generateWarmupSets(
-              lift.currentWeight,
-              BAR_WEIGHT,
-              lift.roundTo,
-            );
-            const plates = calculatePlates(
-              lift.currentWeight,
-              BAR_WEIGHT,
-              AVAILABLE_PLATES,
-            );
+        <>
+          <div className="flex flex-col gap-4">
+            {liftsForToday.map((lift) => {
+              const warmups = generateWarmupSets(
+                lift.currentWeight,
+                BAR_WEIGHT,
+                lift.roundTo,
+              );
+              const plates = calculatePlates(
+                lift.currentWeight,
+                BAR_WEIGHT,
+                AVAILABLE_PLATES,
+              );
 
-            return (
-              <section
-                key={lift.liftName}
-                className="rounded border border-neutral-200 p-4"
-              >
-                <h2 className="text-lg font-semibold">{lift.liftName}</h2>
-                <p className="text-2xl font-bold">
-                  {lift.currentWeight} lb &times; {lift.setCount} &times;{" "}
-                  {REPS_PER_SET}
-                </p>
-                <p className="text-sm text-neutral-500">
-                  Plates/side:{" "}
-                  {plates.perSide.length > 0
-                    ? plates.perSide.join(", ")
-                    : "bar only"}
-                </p>
-                <details className="mt-2 text-sm text-neutral-500">
-                  <summary>Warm-up sets</summary>
-                  <ul className="mt-1 list-disc pl-5">
-                    {warmups.map((w, i) => (
-                      <li key={i}>
-                        {w.weight} lb &times; {w.reps}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </section>
-            );
-          })}
-        </div>
+              return (
+                <section
+                  key={lift.liftName}
+                  className="rounded border border-neutral-200 p-4"
+                >
+                  <h2 className="text-lg font-semibold">{lift.liftName}</h2>
+                  <p className="text-2xl font-bold">
+                    {lift.currentWeight} lb &times; {lift.setCount} &times;{" "}
+                    {REPS_PER_SET}
+                  </p>
+                  <p className="text-sm text-neutral-500">
+                    Plates/side:{" "}
+                    {plates.perSide.length > 0
+                      ? plates.perSide.join(", ")
+                      : "bar only"}
+                  </p>
+                  <details className="mt-2 text-sm text-neutral-500">
+                    <summary>Warm-up sets</summary>
+                    <ul className="mt-1 list-disc pl-5">
+                      {warmups.map((w, i) => (
+                        <li key={i}>
+                          {w.weight} lb &times; {w.reps}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </section>
+              );
+            })}
+          </div>
+
+          <WorkoutSession
+            workoutType={workoutType}
+            date={new Date().toISOString().slice(0, 10)}
+            sessionId={crypto.randomUUID()}
+            lifts={liftsForToday.map((l) => ({
+              liftName: l.liftName,
+              currentWeight: l.currentWeight,
+              setCount: l.setCount,
+            }))}
+          />
+        </>
       )}
     </main>
   );

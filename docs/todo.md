@@ -75,16 +75,17 @@ stand-in password check has been swapped for real Cognito:
   Proxy coverage — see `app/today/page.tsx`)
 - [x] Logout clears the cookie — `app/api/logout/route.ts` (no server-side session record to
   invalidate yet since there isn't a database-backed session store; revisit if that's needed)
-- [ ] Row-level ownership check on every data read/write (never trust a client-supplied
-  user_id) — applies once real DynamoDB data access exists (§1/§2)
+- [x] Row-level ownership check on every data read/write (never trust a client-supplied
+  user_id) — `app/app/today/actions.ts`'s `finishWorkoutSession` derives `userId` from the
+  verified session cookie itself, never from client-supplied input
 
 ## 4. Program engine (core logic, should be pure/unit-testable)
 
 Already implemented and unit-tested (21/21 passing) in `spikes/program-engine/` — this
 section is porting, not building from scratch:
 
-- [ ] Port `nextWorkoutType`, `nextLiftState`, `generateWarmupSets`, `calculatePlates` and their tests from `spikes/program-engine/src|tests/` into `lib/program-engine/`
-- [ ] Re-run the ported test suite in the real app's test runner to confirm nothing broke in the move
+- [x] Ported `nextWorkoutType`, `nextLiftState`, `generateWarmupSets`, `calculatePlates` and their tests from `spikes/program-engine/src|tests/` into `app/lib/program-engine/`
+- [x] Re-ran the ported test suite in the app's own runner (`pnpm test`, vitest) — 21/21 pass, wired into `.claude/harness.json`
 - [x] Wired these pure functions to the real DynamoDB-backed data — `app/app/today/page.tsx`
   (thin adapter as planned: fetch lifts + recent sessions, call the pure functions, render)
 
@@ -94,12 +95,28 @@ section is porting, not building from scratch:
   — `app/app/today/page.tsx`, verified end-to-end against real Cognito + real DynamoDB data
   (see `docs/spikes.md` for the curl-driven verification). Bar weight / plate set are still
   hardcoded constants, not yet a Settings screen (§6).
-- [ ] Set logging screen: large tap targets for "done" / "failed" per set, rest timer auto-starts after marking a set done
+- [x] Set logging screen: large tap targets for "done" / "failed" per set — `WorkoutSession.tsx`
+  (client component) + `actions.ts` (`finishWorkoutSession` server action). Rest timer
+  auto-starts after marking any set (done or missed), matching the spec.
 - [x] Warm-up sets shown before work sets, plate breakdown shown per set — done on the
-  today screen (collapsed under a `<details>` for warm-ups); still needed on a future
-  set-logging screen once that exists
-- [ ] Rest timer component: countdown, audible/vibration alert at zero, skippable
-- [ ] Session summary screen at end of workout (what was completed, weight changes for next time)
+  today screen (collapsed under a `<details>` for warm-ups)
+- [x] Rest timer component: countdown (180s), audible beep (Web Audio oscillator) + vibration
+  at zero, skippable — built into `WorkoutSession.tsx` rather than a separate component, since
+  it's only ever used inline with set logging
+- [ ] Session summary screen at end of workout (what was completed, weight changes for next
+  time) — currently just redirects back to `/today`, which shows the next workout's updated
+  weights as an implicit confirmation; a dedicated summary view is still open
+
+**Verification note:** browser automation (chrome-devtools MCP, claude-in-chrome) was
+unavailable in this environment, so the interactive UI (button clicks, the rest timer's
+client-side countdown) was not literally click-tested. What *was* verified for real against
+the live Cognito user and live DynamoDB table: the exact read→compute→write sequence the
+server action performs (a throwaway script exercising `getAllLifts`/`nextLiftState`/
+`putSession`/`putLift` end-to-end — Squat/Bench/Row all correctly incremented by their
+configured increment, the session was correctly recorded as most-recent, and the next `/today`
+load correctly alternated to Workout B and rendered the updated weights). `gate-ci --full`
+(lint/typecheck/test/build) is green, including a real bug the lint step caught (synchronous
+`setState` inside a `useEffect` in the rest-timer logic, fixed properly rather than suppressed).
 
 ## 6. UI — history & settings
 
@@ -110,7 +127,7 @@ section is porting, not building from scratch:
 
 ## 7. Cost verification
 
-- [ ] Confirm the DynamoDB table is created with on-demand billing (not provisioned capacity)
+- [x] Confirmed the DynamoDB table is created with on-demand billing (not provisioned capacity) — `aws dynamodb describe-table` shows `PAY_PER_REQUEST`
 - [ ] Add a loading skeleton for the home screen while the first DynamoDB read resolves (DynamoDB has no cold-start ACU ramp-up like Aurora did, but the first request after a Lambda cold start still has normal serverless latency — a skeleton is cheap insurance either way)
 
 ## 8. Deployment
