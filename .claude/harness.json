@@ -1,6 +1,7 @@
 {
   "lint": "cd app && pnpm lint",
   "typecheck": "cd app && pnpm typecheck",
+  "test": "cd app && pnpm test",
   "build": "cd app && pnpm build",
   "boot": "cd app && pnpm dev",
   "ready": "http://localhost:3000"

@@ -6,7 +6,7 @@ account-setup steps these depend on, and `verification-plan.md` for how each mil
 
 ## 0. Project scaffolding
 
-- [ ] `git init` the repo at the top level (`docs/`, `spikes/`, `app/` all in one repo), add a root `.gitignore` (Node, Next.js, Amplify) — deliberately left undone so the first commit is the user's call, not made silently; see `docs/scaffold-plan.md`
+- [x] `git init` the repo at the top level (`docs/`, `spikes/`, `app/` all in one repo), root `.gitignore` added, initial commit made and pushed to `https://github.com/timothyohare/strengthtraining` (public)
 - [x] Scaffold Next.js app (App Router, TypeScript, Tailwind) — `app/`, see `docs/scaffold-plan.md`
 - [x] Set up PWA manifest + service worker for home-screen install and basic asset caching — `app/public/manifest.json`, `app/public/sw.js`
 - [x] Add `harness.json` / lint + typecheck + build scripts — `.claude/harness.json` at repo root, `pnpm typecheck` added to `app/package.json`; `gate-ci --full` verified green
@@ -22,12 +22,13 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
 - [x] Cognito User Pool + App Client provisioned via `infra/cognito.yaml` (CloudFormation),
   no self-service sign-up, `USER_PASSWORD_AUTH` flow, region `ap-southeast-2` (same account/
   region nrl-predictor already runs in — account `810429055117`)
-- [ ] Define the DynamoDB table resource (on-demand billing, single table — schema validated
-  in `spikes/dynamodb-schema/`) — extend `infra/` with a second CloudFormation template (or
-  add a `Resources:` entry to `infra/cognito.yaml` if it's simpler to keep one stack; decide
-  when this is picked up)
-- [ ] Wire `@aws-sdk/lib-dynamodb` access from the Next.js server using the access-pattern
-  functions ported from the spike
+- [x] DynamoDB table provisioned via `infra/dynamodb.yaml` (separate stack, `lift5-dynamodb`,
+  on-demand billing confirmed via `aws dynamodb describe-table`) — table `lift5-dev`
+- [x] Wired `@aws-sdk/lib-dynamodb` access from the Next.js server — `app/lib/db/schema.ts`,
+  ported directly from the spike, zero logic changes
+- [ ] Production (Amplify Hosting) will need its own IAM permissions for this table on the
+  app's compute role — local dev works via ambient AWS CLI credentials, which won't exist on
+  the deployed app; not yet configured
 - [ ] **Do not add `amplify.yml`** when connecting the repo to Amplify Hosting — see
   `app/CLAUDE.md`'s "Amplify deploy lessons" for why (breaks the Next.js SSR adapter's
   auto-detection, confirmed root cause of a real nrl-predictor outage)
@@ -38,15 +39,24 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
 ## 2. Data model
 
 Single DynamoDB table, design and every access pattern already validated live in
-`spikes/dynamodb-schema/` (see `docs/spikes.md` for the spike write-up) — this section is
-about porting that spike code into the real app, not designing from scratch:
+`spikes/dynamodb-schema/` (see `docs/spikes.md` for the spike write-up) — ported into the
+real app, and now backed by a real deployed table:
 
-- [ ] Port `spikes/dynamodb-schema/src/schema.ts` into `lib/db/` (table def, key helpers, item types, access-pattern functions)
-- [ ] `PROFILE` item — per user (display name, unit preference, created_at)
-- [ ] `LIFT#<name>` items — per-user configured lifts (current working weight, increment, roundTo, set count, fail streak, deload count)
-- [ ] `SESSION#<date>#<id>` items — a completed or in-progress training session, with sets embedded as an attribute list (workout type A/B, date, status, sets[])
+- [x] Ported `spikes/dynamodb-schema/src/schema.ts` into `app/lib/db/schema.ts` (table def,
+  key helpers, item types, access-pattern functions)
+- [x] `PROFILE` item — per user (display name, unit preference, created_at)
+- [x] `LIFT#<name>` items — per-user configured lifts (current working weight, increment,
+  roundTo, set count, fail streak, deload count)
+- [x] `SESSION#<date>#<id>` items — item shape ported and typed (`SessionItem`), not yet
+  written by any real flow (set-logging UI is §5, still pending)
 - [ ] `bodyweight_logs` (stretch) — decide item shape when this is picked up (not spiked yet)
-- [ ] Seed script for default StrongLifts A/B program and default per-lift increments
+- [x] Seed script — `app/scripts/seed.ts` (`pnpm exec tsx scripts/seed.ts <userId>`), seeded
+  the default StrongLifts A/B program for user `tim` in the real table
+- [ ] **Known gap:** the deload → 3x5 fallback rule in
+  `lib/program-engine/progression.ts` was validated (spike) for the 5-set lifts; Deadlift's
+  classic 1-set program design isn't correctly modeled by the same generic rule if it ever
+  deloads twice (would incorrectly bump it to 3 sets). Not yet hit in practice since no real
+  sessions have been logged; fix before deload logic runs against Deadlift for real.
 
 ## 3. Auth & session
 
@@ -75,13 +85,19 @@ section is porting, not building from scratch:
 
 - [ ] Port `nextWorkoutType`, `nextLiftState`, `generateWarmupSets`, `calculatePlates` and their tests from `spikes/program-engine/src|tests/` into `lib/program-engine/`
 - [ ] Re-run the ported test suite in the real app's test runner to confirm nothing broke in the move
-- [ ] Wire these pure functions to the real DynamoDB-backed data (they currently take/return plain objects, no I/O — should be a thin adapter, not a rewrite)
+- [x] Wired these pure functions to the real DynamoDB-backed data — `app/app/today/page.tsx`
+  (thin adapter as planned: fetch lifts + recent sessions, call the pure functions, render)
 
 ## 5. UI — workout flow (mobile-first)
 
-- [ ] Home/today screen: shows next workout (A/B), each lift with target weight x sets x reps
+- [x] Home/today screen: shows next workout (A/B), each lift with target weight x sets x reps
+  — `app/app/today/page.tsx`, verified end-to-end against real Cognito + real DynamoDB data
+  (see `docs/spikes.md` for the curl-driven verification). Bar weight / plate set are still
+  hardcoded constants, not yet a Settings screen (§6).
 - [ ] Set logging screen: large tap targets for "done" / "failed" per set, rest timer auto-starts after marking a set done
-- [ ] Warm-up sets shown before work sets, plate breakdown shown per set
+- [x] Warm-up sets shown before work sets, plate breakdown shown per set — done on the
+  today screen (collapsed under a `<details>` for warm-ups); still needed on a future
+  set-logging screen once that exists
 - [ ] Rest timer component: countdown, audible/vibration alert at zero, skippable
 - [ ] Session summary screen at end of workout (what was completed, weight changes for next time)
 

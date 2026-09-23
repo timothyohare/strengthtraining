@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Single-table DynamoDB store for Lift5 (docs/prd.md #7). On-demand billing
+  (no idle cost), zero secondary indexes -- schema and every v1 access
+  pattern validated live against DynamoDB Local in spikes/dynamodb-schema/
+  (see docs/spikes.md Spike 2). PK/SK layout: PK = USER#<userId>,
+  SK = PROFILE | LIFT#<liftName> | SESSION#<isoDate>#<sessionId>.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: Environment tag, e.g. dev or prod.
+
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub lift5-${StageName}
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+
+Outputs:
+  TableName:
+    Value: !Ref Table
+  TableArn:
+    Value: !GetAtt Table.Arn
