@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Cognito User Pool for Lift5 (docs/prd.md #6). Admin-provisioned users only --
+  no self-service sign-up, matching the invite-only single/few-user design.
+  Deployed via `aws cloudformation deploy` directly (no CDK toolchain), same
+  IaC approach rotrade uses for its AWS-native infra.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: Environment tag, e.g. dev or prod.
+
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub lift5-users-${StageName}
+      # No self-service sign-up: only admin-create-user can add accounts.
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 12
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+      AutoVerifiedAttributes: []
+      UsernameAttributes: []
+      UsernameConfiguration:
+        CaseSensitive: false
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub lift5-web-${StageName}
+      UserPoolId: !Ref UserPool
+      GenerateSecret: true
+      # Plain username+password auth, called server-side only (app/api/login/route.ts)
+      # -- no Hosted UI, no SRP client crypto needed.
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+      PreventUserExistenceErrors: ENABLED
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
