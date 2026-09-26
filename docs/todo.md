@@ -142,7 +142,14 @@ in a real browser.
   boot showed the one real logged session's three lifts unfiltered, correctly narrowed to just
   Squat when filtered, and confirmed the auth redirect for a request with no cookie. Interactive
   click-testing still wasn't possible (Chrome extension not connected in this environment).
-- [ ] Progress chart per lift (weight over time)
+- [x] Progress chart per lift (weight over time) — `app/history/ProgressChart.tsx`, plain inline
+  SVG (no charting dependency) rendered inside `/history` when a lift filter is active; points
+  colored by completed/missed, a `<details>` table view underneath for accessibility, and a
+  same-weight-plateau fallback message under 2 points. Verified with a throwaway
+  `renderToStaticMarkup` render against synthetic multi-point data (real data only has one
+  logged session so far) — caught and fixed a real bug this way: SVG `<title>` tooltips need a
+  single string child, not multiple JSX expressions, or React warns and drops them. `gate-ci
+  --full` green.
 - [ ] Settings screen: units, bar weight, available plates, per-lift increments, rest timer duration, starting weights
 - [ ] (Stretch) Bodyweight log entry + simple trend view
 

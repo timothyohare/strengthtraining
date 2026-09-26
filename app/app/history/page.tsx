@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 import { getAllSessions } from "@/lib/db/schema";
 import { WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
+import { ProgressChart } from "./ProgressChart";
+
+const CHART_POINT_LIMIT = 30;
 
 const ALL_LIFTS = [...new Set(Object.values(WORKOUT_LIFTS).flat())];
 
@@ -35,6 +38,21 @@ export default async function HistoryPage({
         : s.sets,
     }))
     .filter((s) => s.sets.length > 0);
+
+  const chartPoints = activeLift
+    ? sessions
+        .map((s) => {
+          const liftSets = s.sets.filter((set) => set.liftName === activeLift);
+          if (liftSets.length === 0) return null;
+          return {
+            date: s.date,
+            weight: liftSets[0].targetWeight,
+            completed: liftSets.every((set) => set.completed),
+          };
+        })
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .slice(-CHART_POINT_LIMIT)
+    : [];
 
   return (
     <main className="flex min-h-dvh flex-col gap-6 p-6">
@@ -73,6 +91,8 @@ export default async function HistoryPage({
           </Link>
         ))}
       </div>
+
+      {activeLift && <ProgressChart liftName={activeLift} points={chartPoints} />}
 
       {visibleSessions.length === 0 ? (
         <p className="text-neutral-500">
