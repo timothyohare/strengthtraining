@@ -133,7 +133,15 @@ in a real browser.
 
 ## 6. UI — history & settings
 
-- [ ] Workout history list (past sessions, filterable by lift)
+- [x] Workout history list (past sessions, filterable by lift) — `app/history/page.tsx`,
+  reuses the already-validated `getAllSessions` access pattern from `lib/db/schema.ts`;
+  lift filter is a plain `?lift=` query param (server component, no client JS needed). Linked
+  from the today screen header. Verified end-to-end against the real Cognito user's live
+  DynamoDB data: a locally-minted dev session cookie (the app's own `createSessionToken`,
+  dev fallback secret — no Cognito password needed, no data mutated) against a real `pnpm dev`
+  boot showed the one real logged session's three lifts unfiltered, correctly narrowed to just
+  Squat when filtered, and confirmed the auth redirect for a request with no cookie. Interactive
+  click-testing still wasn't possible (Chrome extension not connected in this environment).
 - [ ] Progress chart per lift (weight over time)
 - [ ] Settings screen: units, bar weight, available plates, per-lift increments, rest timer duration, starting weights
 - [ ] (Stretch) Bodyweight log entry + simple trend view

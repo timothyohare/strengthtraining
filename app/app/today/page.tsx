@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
@@ -47,14 +48,22 @@ export default async function TodayPage() {
           <h1 className="text-xl font-semibold">Workout {workoutType}</h1>
           <p className="text-sm text-neutral-500">Signed in as {userId}</p>
         </div>
-        <form action="/api/logout" method="POST">
-          <button
-            type="submit"
+        <div className="flex items-center gap-2">
+          <Link
+            href="/history"
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
           >
-            Log out
-          </button>
-        </form>
+            History
+          </Link>
+          <form action="/api/logout" method="POST">
+            <button
+              type="submit"
+              className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
+            >
+              Log out
+            </button>
+          </form>
+        </div>
       </div>
 
       {liftsForToday.length === 0 ? (
