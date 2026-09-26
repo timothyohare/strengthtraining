@@ -52,11 +52,11 @@ real app, and now backed by a real deployed table:
 - [ ] `bodyweight_logs` (stretch) — decide item shape when this is picked up (not spiked yet)
 - [x] Seed script — `app/scripts/seed.ts` (`pnpm exec tsx scripts/seed.ts <userId>`), seeded
   the default StrongLifts A/B program for user `tim` in the real table
-- [ ] **Known gap:** the deload → 3x5 fallback rule in
-  `lib/program-engine/progression.ts` was validated (spike) for the 5-set lifts; Deadlift's
-  classic 1-set program design isn't correctly modeled by the same generic rule if it ever
-  deloads twice (would incorrectly bump it to 3 sets). Not yet hit in practice since no real
-  sessions have been logged; fix before deload logic runs against Deadlift for real.
+- [x] **Fixed known gap:** the deload → 3x5 fallback rule in `lib/program-engine/progression.ts`
+  now only drops `setCount` to 3 when the lift currently runs more than 3 sets, so a second
+  deload on Deadlift's 1-set program no longer incorrectly bumps it to 3 sets. Covered by a
+  new test (`does not raise a single-set lift (Deadlift) to 3x5 on a second deload`); 22/22
+  tests pass, `gate-ci --full` green.
 
 ## 3. Auth & session
 

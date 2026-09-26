@@ -5,8 +5,6 @@ export interface LiftState {
   /** Round weights (e.g. after a deload) to the nearest multiple of this. */
   roundTo: number;
   // Not strictly 5|3: Deadlift's classic program uses a single work set (1).
-  // See docs/todo.md §2 "known gap" -- the double-deload fallback below
-  // assumes a 5-set lift and isn't correct for Deadlift yet.
   setCount: number;
   /** Consecutive failed sessions on this lift, resets on any success. */
   failStreak: number;
@@ -28,7 +26,9 @@ function roundToNearest(value: number, step: number): number {
  * *next* time this lift is programmed. Rules (per prd.md #5):
  *  - full completion -> weight increases by `increment`, fail streak resets
  *  - a miss -> fail streak +1; on the 3rd consecutive miss, deload 10% and reset streak
- *  - a 2nd deload (ever) on this lift permanently drops it from 5x5 to 3x5
+ *  - a 2nd deload (ever) on a 5-set lift permanently drops it from 5x5 to 3x5;
+ *    lifts that already run fewer than 5 sets (Deadlift's single work set)
+ *    are unaffected, since the fallback is a *drop*, never a raise
  */
 export function nextLiftState(
   state: LiftState,
@@ -59,6 +59,6 @@ export function nextLiftState(
     currentWeight: deloadedWeight,
     failStreak: 0,
     deloadCount,
-    setCount: deloadCount >= 2 ? 3 : state.setCount,
+    setCount: deloadCount >= 2 && state.setCount > 3 ? 3 : state.setCount,
   };
 }

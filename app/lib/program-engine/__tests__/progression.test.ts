@@ -88,4 +88,19 @@ describe("nextLiftState", () => {
     expect(state.setCount).toBe(3);
     expect(state.deloadCount).toBe(3);
   });
+
+  it("does not raise a single-set lift (Deadlift) to 3x5 on a second deload", () => {
+    let state = baseState({ name: "Deadlift", setCount: 1 });
+    for (let i = 0; i < 3; i++) {
+      state = nextLiftState(state, { completed: false }); // first deload
+    }
+    expect(state.deloadCount).toBe(1);
+    expect(state.setCount).toBe(1);
+
+    for (let i = 0; i < 3; i++) {
+      state = nextLiftState(state, { completed: false }); // second deload
+    }
+    expect(state.deloadCount).toBe(2);
+    expect(state.setCount).toBe(1);
+  });
 });
