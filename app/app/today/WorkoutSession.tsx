@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { finishWorkoutSession, type SetResult } from "./actions";
+import {
+  finishWorkoutSession,
+  type FinishWorkoutResult,
+  type SetResult,
+} from "./actions";
 import { REPS_PER_SET } from "@/lib/program-engine/workouts";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
 
@@ -66,6 +70,7 @@ export function WorkoutSession({
   });
   const [restRemaining, setRestRemaining] = useState<number | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [summary, setSummary] = useState<FinishWorkoutResult | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -128,9 +133,71 @@ export function WorkoutSession({
       ),
     );
 
-    await finishWorkoutSession({ workoutType, date, sessionId, results });
+    const result = await finishWorkoutSession({
+      workoutType,
+      date,
+      sessionId,
+      results,
+    });
+    setRestRemaining(null);
+    setSummary(result);
+  }
+
+  function backToToday() {
     router.push("/today");
     router.refresh();
+  }
+
+  if (summary) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold">Workout complete</h2>
+        <div className="flex flex-col gap-3">
+          {summary.lifts.map((lift) => {
+            const delta = lift.newWeight - lift.previousWeight;
+            return (
+              <section
+                key={lift.liftName}
+                className="rounded border border-neutral-200 p-4"
+              >
+                <h3 className="font-semibold">{lift.liftName}</h3>
+                <p className="text-sm text-neutral-500">
+                  {lift.setsCompleted}/{lift.totalSets} sets completed
+                </p>
+                <p className="mt-1 text-base">
+                  {lift.previousWeight} lb &rarr; {lift.newWeight} lb
+                  {delta !== 0 && (
+                    <span
+                      className={
+                        delta > 0
+                          ? "ml-2 text-green-700"
+                          : "ml-2 text-amber-700"
+                      }
+                    >
+                      ({delta > 0 ? "+" : ""}
+                      {delta} lb)
+                    </span>
+                  )}
+                </p>
+                {lift.deloaded && (
+                  <p className="mt-1 text-sm text-amber-700">
+                    Deloaded after 3 missed sessions
+                    {lift.setCountDropped ? " — now 3 sets" : ""}
+                  </p>
+                )}
+              </section>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={backToToday}
+          className="rounded bg-black py-4 text-lg font-semibold text-white"
+        >
+          Back to today
+        </button>
+      </div>
+    );
   }
 
   return (

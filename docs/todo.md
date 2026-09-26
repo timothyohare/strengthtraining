@@ -103,9 +103,11 @@ section is porting, not building from scratch:
 - [x] Rest timer component: countdown (180s), audible beep (Web Audio oscillator) + vibration
   at zero, skippable — built into `WorkoutSession.tsx` rather than a separate component, since
   it's only ever used inline with set logging
-- [ ] Session summary screen at end of workout (what was completed, weight changes for next
-  time) — currently just redirects back to `/today`, which shows the next workout's updated
-  weights as an implicit confirmation; a dedicated summary view is still open
+- [x] Session summary screen at end of workout (what was completed, weight changes for next
+  time) — `finishWorkoutSession` (`actions.ts`) now returns a per-lift summary (previous
+  weight, new weight, sets completed, deload/set-count-drop flags); `WorkoutSession.tsx`
+  renders it in place after "Finish workout" instead of redirecting immediately, with a
+  "Back to today" button to return to `/today`
 
 **Verification note:** browser automation (chrome-devtools MCP, claude-in-chrome) was
 unavailable in this environment, so the interactive UI (button clicks, the rest timer's
@@ -117,6 +119,17 @@ configured increment, the session was correctly recorded as most-recent, and the
 load correctly alternated to Workout B and rendered the updated weights). `gate-ci --full`
 (lint/typecheck/test/build) is green, including a real bug the lint step caught (synchronous
 `setState` inside a `useEffect` in the rest-timer logic, fixed properly rather than suppressed).
+
+**Summary screen verification note:** no known password for the live Cognito user `tim` was
+available in this session (not stored in the repo, by design), so the summary screen wasn't
+click-tested live against Cognito/DynamoDB — resetting Tim's real login or mutating his real
+lift progression data just to test a UI addition wasn't worth the side effect. Instead, the
+new summary-derivation math in `finishWorkoutSession` (previous/new weight, deload flag,
+set-count-drop flag) was verified with a throwaway script driving the same `nextLiftState`
+function across four scenarios (full completion, first deload, second deload triggering the
+3x5 set-count drop, single miss with no deload yet) — all four produced the expected summary
+fields. `gate-ci --full` is green. Still open: an actual click-through of the new summary view
+in a real browser.
 
 ## 6. UI — history & settings
 

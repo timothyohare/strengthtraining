@@ -22,13 +22,29 @@ export interface FinishWorkoutInput {
   results: SetResult[];
 }
 
+export interface LiftSummary {
+  liftName: string;
+  previousWeight: number;
+  newWeight: number;
+  setsCompleted: number;
+  totalSets: number;
+  deloaded: boolean;
+  setCountDropped: boolean;
+}
+
+export interface FinishWorkoutResult {
+  lifts: LiftSummary[];
+}
+
 /**
  * Persists a finished session and applies progression/deload to each lift
  * involved, per docs/prd.md §5. The userId is deliberately never taken from
  * the client -- it's derived from the verified session cookie, closing the
  * "never trust a client-supplied user_id" item from docs/todo.md §3.
  */
-export async function finishWorkoutSession(input: FinishWorkoutInput) {
+export async function finishWorkoutSession(
+  input: FinishWorkoutInput,
+): Promise<FinishWorkoutResult> {
   const cookieStore = await cookies();
   const session = verifySessionToken(
     cookieStore.get(SESSION_COOKIE.name)?.value,
@@ -48,6 +64,7 @@ export async function finishWorkoutSession(input: FinishWorkoutInput) {
 
   const lifts = await getAllLifts(userId);
   const liftNames = [...new Set(input.results.map((r) => r.liftName))];
+  const summaries: LiftSummary[] = [];
 
   for (const liftName of liftNames) {
     const lift = lifts.find((l) => l.liftName === liftName);
@@ -69,5 +86,17 @@ export async function finishWorkoutSession(input: FinishWorkoutInput) {
       failStreak: updated.failStreak,
       deloadCount: updated.deloadCount,
     });
+
+    summaries.push({
+      liftName: lift.liftName,
+      previousWeight: lift.currentWeight,
+      newWeight: updated.currentWeight,
+      setsCompleted: setsForLift.filter((s) => s.completed).length,
+      totalSets: setsForLift.length,
+      deloaded: updated.deloadCount > lift.deloadCount,
+      setCountDropped: updated.setCount < lift.setCount,
+    });
   }
+
+  return { lifts: summaries };
 }
