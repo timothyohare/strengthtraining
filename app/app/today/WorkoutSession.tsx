@@ -9,8 +9,7 @@ import {
 } from "./actions";
 import { REPS_PER_SET } from "@/lib/program-engine/workouts";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
-
-const REST_SECONDS = 180;
+import type { Units } from "@/lib/units";
 
 interface SessionLift {
   liftName: string;
@@ -47,11 +46,15 @@ export function WorkoutSession({
   workoutType,
   date,
   sessionId,
+  units,
+  restSeconds,
   lifts,
 }: {
   workoutType: WorkoutType;
   date: string;
   sessionId: string;
+  units: Units;
+  restSeconds: number;
   lifts: SessionLift[];
 }) {
   const router = useRouter();
@@ -101,7 +104,7 @@ export function WorkoutSession({
       ...prev,
       [key]: { status: "logged", completed, actualReps },
     }));
-    setRestRemaining(REST_SECONDS);
+    setRestRemaining(restSeconds);
   }
 
   function adjustReps(key: string, delta: number) {
@@ -165,7 +168,8 @@ export function WorkoutSession({
                   {lift.setsCompleted}/{lift.totalSets} sets completed
                 </p>
                 <p className="mt-1 text-base">
-                  {lift.previousWeight} lb &rarr; {lift.newWeight} lb
+                  {lift.previousWeight} {units} &rarr; {lift.newWeight}{" "}
+                  {units}
                   {delta !== 0 && (
                     <span
                       className={
@@ -175,7 +179,7 @@ export function WorkoutSession({
                       }
                     >
                       ({delta > 0 ? "+" : ""}
-                      {delta} lb)
+                      {delta} {units})
                     </span>
                   )}
                 </p>
@@ -224,7 +228,7 @@ export function WorkoutSession({
           className="rounded border border-neutral-200 p-4"
         >
           <h3 className="font-semibold">
-            {lift.liftName} — {lift.currentWeight} lb
+            {lift.liftName} — {lift.currentWeight} {units}
           </h3>
           <div className="mt-2 flex flex-col gap-2">
             {Array.from({ length: lift.setCount }, (_, i) => i + 1).map(

@@ -42,6 +42,7 @@ export const ddb = DynamoDBDocumentClient.from(ddbClient);
 export const userPk = (userId: string) => `USER#${userId}`;
 export const profileSk = () => "PROFILE";
 export const liftSk = (liftName: string) => `LIFT#${liftName}`;
+export const settingsSk = () => "SETTINGS";
 export const sessionSk = (isoDate: string, sessionId: string) =>
   `SESSION#${isoDate}#${sessionId}`;
 
@@ -62,6 +63,24 @@ export interface LiftItem {
   failStreak: number;
   deloadCount: number;
 }
+
+export interface SettingsItem {
+  barWeight: number;
+  availablePlates: number[];
+  restTimerSeconds: number;
+}
+
+/**
+ * Used until a user has ever saved Settings (docs/todo.md §6). Kg-shaped
+ * (20kg bar, standard Olympic kg plates) since that's this app's actual
+ * user's unit -- a fresh profile also defaults to `units: "kg"`, see
+ * app/settings/actions.ts and scripts/seed.ts.
+ */
+export const DEFAULT_SETTINGS: SettingsItem = {
+  barWeight: 20,
+  availablePlates: [20, 15, 10, 5, 2.5, 1.25],
+  restTimerSeconds: 180,
+};
 
 export interface SessionSet {
   liftName: string;
@@ -120,6 +139,25 @@ export async function getAllLifts(userId: string) {
     }),
   );
   return (res.Items ?? []) as (LiftItem & { PK: string; SK: string })[];
+}
+
+export async function putSettings(userId: string, settings: SettingsItem) {
+  await ddb.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: userPk(userId), SK: settingsSk(), ...settings },
+    }),
+  );
+}
+
+export async function getSettings(userId: string) {
+  const res = await ddb.send(
+    new GetCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: userPk(userId), SK: settingsSk() },
+    }),
+  );
+  return res.Item as (SettingsItem & { PK: string; SK: string }) | undefined;
 }
 
 export async function putSession(userId: string, session: SessionItem) {

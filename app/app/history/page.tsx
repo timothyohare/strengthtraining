@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
-import { getAllSessions } from "@/lib/db/schema";
+import { getAllSessions, getProfile } from "@/lib/db/schema";
 import { WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
 import { ProgressChart } from "./ProgressChart";
 
@@ -27,7 +27,11 @@ export default async function HistoryPage({
   const { lift: liftFilter } = await searchParams;
   const activeLift = Array.isArray(liftFilter) ? liftFilter[0] : liftFilter;
 
-  const sessions = await getAllSessions(session.userId);
+  const [sessions, profile] = await Promise.all([
+    getAllSessions(session.userId),
+    getProfile(session.userId),
+  ]);
+  const units = profile?.units ?? "kg";
   const newestFirst = [...sessions].reverse();
 
   const visibleSessions = newestFirst
@@ -92,7 +96,9 @@ export default async function HistoryPage({
         ))}
       </div>
 
-      {activeLift && <ProgressChart liftName={activeLift} points={chartPoints} />}
+      {activeLift && (
+        <ProgressChart liftName={activeLift} points={chartPoints} units={units} />
+      )}
 
       {visibleSessions.length === 0 ? (
         <p className="text-neutral-500">
@@ -126,7 +132,7 @@ export default async function HistoryPage({
                     return (
                       <p key={liftName}>
                         <span className="font-medium">{liftName}</span>{" "}
-                        {liftSets[0].targetWeight} lb &times;{" "}
+                        {liftSets[0].targetWeight} {units} &times;{" "}
                         {liftSets.length} &mdash; {completedCount}/
                         {liftSets.length} sets
                         {!allCompleted && (

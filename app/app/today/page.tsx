@@ -2,17 +2,18 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
-import { getAllLifts, getMostRecentSessions } from "@/lib/db/schema";
+import {
+  DEFAULT_SETTINGS,
+  getAllLifts,
+  getMostRecentSessions,
+  getProfile,
+  getSettings,
+} from "@/lib/db/schema";
 import { nextWorkoutType } from "@/lib/program-engine/schedule";
 import { REPS_PER_SET, WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
 import { generateWarmupSets } from "@/lib/program-engine/warmup";
 import { calculatePlates } from "@/lib/program-engine/plates";
 import { WorkoutSession } from "./WorkoutSession";
-
-// Not yet configurable (docs/todo.md §6 Settings screen) -- standard US lb
-// bar + plate set, hardcoded for now.
-const BAR_WEIGHT = 45;
-const AVAILABLE_PLATES = [45, 35, 25, 10, 5, 2.5];
 
 export default async function TodayPage() {
   // Defensive check, not just relying on proxy.ts -- Next's own guidance is
@@ -28,10 +29,16 @@ export default async function TodayPage() {
   }
 
   const userId = session.userId;
-  const [lifts, recentSessions] = await Promise.all([
+  const [lifts, recentSessions, profile, settings] = await Promise.all([
     getAllLifts(userId),
     getMostRecentSessions(userId, 1),
+    getProfile(userId),
+    getSettings(userId),
   ]);
+
+  const units = profile?.units ?? "kg";
+  const { barWeight, availablePlates, restTimerSeconds } =
+    settings ?? DEFAULT_SETTINGS;
 
   const workoutType = nextWorkoutType(
     recentSessions.map((s) => ({ workoutType: s.workoutType, date: s.date })),
@@ -54,6 +61,12 @@ export default async function TodayPage() {
             className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
           >
             History
+          </Link>
+          <Link
+            href="/settings"
+            className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
+          >
+            Settings
           </Link>
           <form action="/api/logout" method="POST">
             <button
@@ -80,13 +93,13 @@ export default async function TodayPage() {
             {liftsForToday.map((lift) => {
               const warmups = generateWarmupSets(
                 lift.currentWeight,
-                BAR_WEIGHT,
+                barWeight,
                 lift.roundTo,
               );
               const plates = calculatePlates(
                 lift.currentWeight,
-                BAR_WEIGHT,
-                AVAILABLE_PLATES,
+                barWeight,
+                availablePlates,
               );
 
               return (
@@ -96,8 +109,8 @@ export default async function TodayPage() {
                 >
                   <h2 className="text-lg font-semibold">{lift.liftName}</h2>
                   <p className="text-2xl font-bold">
-                    {lift.currentWeight} lb &times; {lift.setCount} &times;{" "}
-                    {REPS_PER_SET}
+                    {lift.currentWeight} {units} &times; {lift.setCount}{" "}
+                    &times; {REPS_PER_SET}
                   </p>
                   <p className="text-sm text-neutral-500">
                     Plates/side:{" "}
@@ -110,7 +123,7 @@ export default async function TodayPage() {
                     <ul className="mt-1 list-disc pl-5">
                       {warmups.map((w, i) => (
                         <li key={i}>
-                          {w.weight} lb &times; {w.reps}
+                          {w.weight} {units} &times; {w.reps}
                         </li>
                       ))}
                     </ul>
@@ -124,6 +137,8 @@ export default async function TodayPage() {
             workoutType={workoutType}
             date={new Date().toISOString().slice(0, 10)}
             sessionId={crypto.randomUUID()}
+            units={units}
+            restSeconds={restTimerSeconds}
             lifts={liftsForToday.map((l) => ({
               liftName: l.liftName,
               currentWeight: l.currentWeight,

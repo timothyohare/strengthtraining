@@ -1,3 +1,5 @@
+import type { Units } from "@/lib/units";
+
 interface ChartPoint {
   date: string;
   weight: number;
@@ -22,9 +24,11 @@ const PLOT_HEIGHT = HEIGHT - PAD_TOP - PAD_BOTTOM;
 export function ProgressChart({
   liftName,
   points,
+  units,
 }: {
   liftName: string;
   points: ChartPoint[];
+  units: Units;
 }) {
   if (points.length < 2) {
     return (
@@ -107,7 +111,7 @@ export function ProgressChart({
             r={4}
             className={p.completed ? "fill-green-700" : "fill-amber-700"}
           >
-            <title>{`${p.date}: ${p.weight} lb (${p.completed ? "completed" : "missed a set"})`}</title>
+            <title>{`${p.date}: ${p.weight} ${units} (${p.completed ? "completed" : "missed a set"})`}</title>
           </circle>
         ))}
 
@@ -144,7 +148,9 @@ export function ProgressChart({
             {points.map((p, i) => (
               <tr key={i}>
                 <td className="pr-4">{p.date}</td>
-                <td className="pr-4">{p.weight} lb</td>
+                <td className="pr-4">
+                  {p.weight} {units}
+                </td>
                 <td className={p.completed ? "text-green-700" : "text-amber-700"}>
                   {p.completed ? "Completed" : "Missed"}
                 </td>

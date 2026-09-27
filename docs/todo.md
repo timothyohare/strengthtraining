@@ -150,7 +150,26 @@ in a real browser.
   logged session so far) — caught and fixed a real bug this way: SVG `<title>` tooltips need a
   single string child, not multiple JSX expressions, or React warns and drops them. `gate-ci
   --full` green.
-- [ ] Settings screen: units, bar weight, available plates, per-lift increments, rest timer duration, starting weights
+- [x] Settings screen: units, bar weight, available plates, per-lift increments, rest timer
+  duration, starting weights — `app/settings/page.tsx` + `app/settings/actions.ts`. New
+  `SETTINGS#<userId>` item (`lib/db/schema.ts`: `SettingsItem`/`putSettings`/`getSettings`/
+  `DEFAULT_SETTINGS`) alongside the existing `PROFILE.units` field. Design: stored weight
+  fields (lift currentWeight/increment/roundTo, settings barWeight/availablePlates) are always
+  in whatever unit `PROFILE.units` currently says, with **no conversion at display time**;
+  the only conversion math (`lib/units.ts`) runs in one place — switching units — which
+  re-expresses every already-stored weight in the new unit so nothing needs re-entering just
+  because the label changed. Editing individual values is a separate action that never
+  converts, it just stores what's typed. Tim confirmed metric (kg) is his priority, and his
+  real seeded profile/lifts turned out to still have the placeholder `units: "lb"` +
+  imperial numbers the seed script's own comment flagged as needing Settings to fix — kg is
+  now the default for `DEFAULT_SETTINGS` and `scripts/seed.ts`; `today`/`history`/
+  `WorkoutSession`/`ProgressChart` all read `profile.units` instead of hardcoding "lb".
+  Verified: the switch-units conversion logic end-to-end against real DynamoDB using a
+  throwaway test userId (seeded, converted, round-tripped, asserted, then deleted — confirmed
+  clean afterward, never touched Tim's real `tim` data); `/settings` and `/today` read-path
+  rendering verified live against Tim's real profile/lift data (GET only, via a locally-minted
+  session cookie — no form submission against real data, since that would overwrite his real
+  progression numbers with test input). `gate-ci --full` green.
 - [ ] (Stretch) Bodyweight log entry + simple trend view
 
 ## 7. Cost verification
