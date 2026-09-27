@@ -175,7 +175,10 @@ in a real browser.
 ## 7. Cost verification
 
 - [x] Confirmed the DynamoDB table is created with on-demand billing (not provisioned capacity) — `aws dynamodb describe-table` shows `PAY_PER_REQUEST`
-- [ ] Add a loading skeleton for the home screen while the first DynamoDB read resolves (DynamoDB has no cold-start ACU ramp-up like Aurora did, but the first request after a Lambda cold start still has normal serverless latency — a skeleton is cheap insurance either way)
+- [x] Add a loading skeleton for the home screen while the first DynamoDB read resolves —
+  `app/today/loading.tsx`, using Next's `loading.js` file convention (auto-wraps the route in
+  a Suspense boundary, shown until `page.tsx`'s async data fetch resolves). `gate-ci --full`
+  green; confirmed `/today` still loads correctly with it present.
 
 ## 8. Deployment
 
