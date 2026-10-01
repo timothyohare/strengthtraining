@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Amplify Hosting SSR compute role for Lift5. The Next.js server code assumes
+  this role at runtime to reach DynamoDB. Least privilege: only the actions the
+  app issues (GetCommand, PutCommand, QueryCommand) on the single Lift5 table.
+  Cognito login uses the app client secret, not IAM, so no Cognito permissions.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: Environment tag, e.g. dev or prod. Must match the lift5-dynamodb stack.
+
+Resources:
+  ComputeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lift5-amplify-compute-${StageName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lift5-dynamodb-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/lift5-${StageName}
+
+Outputs:
+  ComputeRoleArn:
+    Value: !GetAtt ComputeRole.Arn
