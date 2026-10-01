@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { publicUrl } from "@/lib/redirect";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 // Next.js 16 renamed `middleware.ts` to `proxy.ts` (same runtime behavior,
@@ -9,7 +10,7 @@ export function proxy(request: NextRequest) {
   const session = verifySessionToken(token);
 
   if (!session) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(publicUrl(request, "/login"));
   }
 
   return NextResponse.next();
