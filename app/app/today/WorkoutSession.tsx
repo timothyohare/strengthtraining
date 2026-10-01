@@ -9,18 +9,16 @@ import {
 } from "./actions";
 import { REPS_PER_SET } from "@/lib/program-engine/workouts";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
+import type { WarmupSet } from "@/lib/program-engine/warmup";
 import type { Units } from "@/lib/units";
+import { nextSetState, PENDING_SET, type SetState } from "@/lib/set-tap";
 
 interface SessionLift {
   liftName: string;
   currentWeight: number;
   setCount: number;
-}
-
-interface SetState {
-  status: "pending" | "logged";
-  completed: boolean;
-  actualReps: number;
+  platesPerSide: number[];
+  warmups: WarmupSet[];
 }
 
 function playBeep() {
@@ -40,6 +38,16 @@ function playBeep() {
     // Best-effort -- silence is an acceptable degrade, not a broken app.
   }
   if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+}
+
+function formatClock(seconds: number) {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatPlates(perSide: number[], units: Units) {
+  return perSide.length > 0
+    ? `${perSide.join(" + ")} ${units} a side`
+    : "Empty bar";
 }
 
 export function WorkoutSession({
@@ -62,11 +70,7 @@ export function WorkoutSession({
     const initial: Record<string, SetState> = {};
     for (const lift of lifts) {
       for (let n = 1; n <= lift.setCount; n++) {
-        initial[`${lift.liftName}#${n}`] = {
-          status: "pending",
-          completed: true,
-          actualReps: REPS_PER_SET,
-        };
+        initial[`${lift.liftName}#${n}`] = PENDING_SET;
       }
     }
     return initial;
@@ -90,32 +94,19 @@ export function WorkoutSession({
     };
   }, [restRemaining]);
 
+  const setList = Object.values(sets);
+  const loggedCount = setList.filter((s) => s.status === "logged").length;
   const allLogged = useMemo(
     () => Object.values(sets).every((s) => s.status === "logged"),
     [sets],
   );
 
-  function logSet(
-    key: string,
-    completed: boolean,
-    actualReps: number = completed ? REPS_PER_SET : REPS_PER_SET - 1,
-  ) {
-    setSets((prev) => ({
-      ...prev,
-      [key]: { status: "logged", completed, actualReps },
-    }));
-    setRestRemaining(restSeconds);
-  }
-
-  function adjustReps(key: string, delta: number) {
-    setSets((prev) => {
-      const current = prev[key];
-      const actualReps = Math.min(
-        REPS_PER_SET,
-        Math.max(0, current.actualReps + delta),
-      );
-      return { ...prev, [key]: { ...current, actualReps } };
-    });
+  function tapSet(key: string) {
+    const current = sets[key];
+    setSets((prev) => ({ ...prev, [key]: nextSetState(prev[key]) }));
+    // Only a newly logged set starts the rest clock; correcting the rep count
+    // on a set already logged shouldn't restart it.
+    if (current.status === "pending") setRestRemaining(restSeconds);
   }
 
   async function finish() {
@@ -146,59 +137,70 @@ export function WorkoutSession({
     setSummary(result);
   }
 
-  function backToToday() {
-    router.push("/today");
-    router.refresh();
-  }
-
   if (summary) {
     return (
       <div className="flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Workout complete</h2>
-        <div className="flex flex-col gap-3">
-          {summary.lifts.map((lift) => {
-            const delta = lift.newWeight - lift.previousWeight;
-            return (
-              <section
-                key={lift.liftName}
-                className="rounded border border-neutral-200 p-4"
-              >
-                <h3 className="font-semibold">{lift.liftName}</h3>
-                <p className="text-sm text-neutral-500">
-                  {lift.setsCompleted}/{lift.totalSets} sets completed
-                </p>
-                <p className="mt-1 text-base">
-                  {lift.previousWeight} {units} &rarr; {lift.newWeight}{" "}
-                  {units}
-                  {delta !== 0 && (
-                    <span
-                      className={
-                        delta > 0
-                          ? "ml-2 text-green-700"
-                          : "ml-2 text-amber-700"
-                      }
-                    >
-                      ({delta > 0 ? "+" : ""}
-                      {delta} {units})
-                    </span>
-                  )}
-                </p>
-                {lift.deloaded && (
-                  <p className="mt-1 text-sm text-amber-700">
-                    Deloaded after 3 missed sessions
-                    {lift.setCountDropped ? " — now 3 sets" : ""}
-                  </p>
-                )}
-              </section>
-            );
-          })}
+        <div className="rounded-2xl bg-volt p-5 text-volt-ink">
+          <p className="text-xs font-bold uppercase tracking-[0.2em]">
+            Workout {workoutType}
+          </p>
+          <p className="font-display text-4xl font-extrabold uppercase leading-none">
+            Done. Nice work.
+          </p>
         </div>
+
+        {summary.lifts.map((lift) => {
+          const delta = lift.newWeight - lift.previousWeight;
+          return (
+            <section key={lift.liftName} className="rounded-2xl bg-surface p-4">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="font-display text-xl font-bold uppercase tracking-wide">
+                  {lift.liftName}
+                </h3>
+                <span className="text-sm text-muted tabular-nums">
+                  {lift.setsCompleted}/{lift.totalSets} sets
+                </span>
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <span className="font-display text-2xl font-bold text-muted tabular-nums">
+                  {lift.previousWeight}
+                </span>
+                <span aria-hidden="true" className="text-muted">
+                  &rarr;
+                </span>
+                <span className="font-display text-3xl font-extrabold tabular-nums">
+                  {lift.newWeight}
+                  <span className="ml-1 text-base text-muted">{units}</span>
+                </span>
+                {delta !== 0 && (
+                  <span
+                    className={`ml-auto rounded-full px-2.5 py-1 text-sm font-bold tabular-nums ${
+                      delta > 0
+                        ? "bg-volt/15 text-volt"
+                        : "bg-miss/15 text-miss"
+                    }`}
+                  >
+                    {delta > 0 ? "+" : ""}
+                    {delta} {units}
+                  </span>
+                )}
+              </div>
+              {lift.deloaded && (
+                <p className="mt-2 text-sm text-miss">
+                  Deloaded after 3 missed sessions
+                  {lift.setCountDropped ? " — now 3 sets" : ""}
+                </p>
+              )}
+            </section>
+          );
+        })}
+
         <button
           type="button"
-          onClick={backToToday}
-          className="rounded bg-black py-4 text-lg font-semibold text-white"
+          onClick={() => router.refresh()}
+          className="rounded-2xl bg-ink py-4 font-display text-xl font-bold uppercase tracking-wider text-bg"
         >
-          Back to today
+          Done
         </button>
       </div>
     );
@@ -206,98 +208,77 @@ export function WorkoutSession({
 
   return (
     <div className="flex flex-col gap-4">
-      {restRemaining !== null && restRemaining > 0 && (
-        <div className="sticky top-0 z-10 flex items-center justify-between rounded bg-black px-4 py-3 text-white">
-          <span className="text-lg font-semibold tabular-nums">
-            Rest: {Math.floor(restRemaining / 60)}:
-            {String(restRemaining % 60).padStart(2, "0")}
-          </span>
-          <button
-            type="button"
-            onClick={() => setRestRemaining(null)}
-            className="rounded border border-white/40 px-3 py-1 text-sm"
-          >
-            Skip
-          </button>
-        </div>
-      )}
+      <p className="text-sm text-muted">
+        Tap a circle when you finish a set. Missed reps? Tap again to take one
+        off.
+      </p>
 
       {lifts.map((lift) => (
-        <section
-          key={lift.liftName}
-          className="rounded border border-neutral-200 p-4"
-        >
-          <h3 className="font-semibold">
-            {lift.liftName} — {lift.currentWeight} {units}
-          </h3>
-          <div className="mt-2 flex flex-col gap-2">
+        <section key={lift.liftName} className="rounded-2xl bg-surface p-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl font-bold uppercase tracking-wide">
+              {lift.liftName}
+            </h2>
+            <p className="font-display text-4xl font-extrabold leading-none tabular-nums">
+              {lift.currentWeight}
+              <span className="ml-1 text-lg font-bold text-muted">{units}</span>
+            </p>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            {lift.setCount}&times;{REPS_PER_SET} &middot;{" "}
+            {formatPlates(lift.platesPerSide, units)}
+          </p>
+
+          <div className="mt-4 grid grid-cols-5 gap-2.5">
             {Array.from({ length: lift.setCount }, (_, i) => i + 1).map(
               (setNumber) => {
                 const key = `${lift.liftName}#${setNumber}`;
                 const s = sets[key];
+                const style =
+                  s.status === "pending"
+                    ? "border-2 border-line text-muted/60"
+                    : s.completed
+                      ? "bg-volt text-volt-ink"
+                      : "border-2 border-miss bg-miss/15 text-miss";
+                const state =
+                  s.status === "pending"
+                    ? "not done"
+                    : `${s.actualReps} rep${s.actualReps === 1 ? "" : "s"}`;
                 return (
-                  <div
+                  <button
                     key={key}
-                    className="flex items-center justify-between gap-2"
+                    type="button"
+                    onClick={() => tapSet(key)}
+                    aria-label={`${lift.liftName} set ${setNumber}: ${state}`}
+                    className={`flex aspect-square w-full items-center justify-center rounded-full font-display text-2xl font-extrabold tabular-nums transition-transform active:scale-90 ${style}`}
                   >
-                    <span className="w-16 text-sm text-neutral-500">
-                      Set {setNumber}
-                    </span>
-                    {s.status === "pending" ? (
-                      <div className="flex flex-1 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => logSet(key, true)}
-                          className="flex-1 rounded bg-green-600 py-3 text-base font-semibold text-white"
-                        >
-                          Hit {REPS_PER_SET}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => logSet(key, false)}
-                          className="flex-1 rounded bg-red-600 py-3 text-base font-semibold text-white"
-                        >
-                          Missed
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-1 items-center justify-end gap-2">
-                        <span
-                          className={
-                            s.completed
-                              ? "text-green-700"
-                              : "text-red-700"
-                          }
-                        >
-                          {s.actualReps} rep{s.actualReps === 1 ? "" : "s"}
-                        </span>
-                        {!s.completed && (
-                          <div className="flex gap-1">
-                            <button
-                              type="button"
-                              onClick={() => adjustReps(key, -1)}
-                              className="rounded border border-neutral-300 px-2 py-1"
-                              aria-label="fewer reps"
-                            >
-                              −
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => adjustReps(key, 1)}
-                              className="rounded border border-neutral-300 px-2 py-1"
-                              aria-label="more reps"
-                            >
-                              +
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    {s.actualReps}
+                  </button>
                 );
               },
             )}
           </div>
+
+          {lift.warmups.length > 0 && (
+            <details className="group mt-4 text-sm">
+              <summary className="cursor-pointer list-none text-muted">
+                <span className="inline-block transition-transform group-open:rotate-90">
+                  &rsaquo;
+                </span>{" "}
+                Warm-up sets
+              </summary>
+              <ul className="mt-2 flex flex-wrap gap-2">
+                {lift.warmups.map((w, i) => (
+                  <li
+                    key={i}
+                    className="rounded-full bg-surface-2 px-3 py-1 tabular-nums"
+                  >
+                    {w.weight} {units} &times; {w.reps}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
         </section>
       ))}
 
@@ -305,10 +286,63 @@ export function WorkoutSession({
         type="button"
         disabled={!allLogged || finishing}
         onClick={finish}
-        className="rounded bg-black py-4 text-lg font-semibold text-white disabled:opacity-40"
+        className="rounded-2xl bg-volt py-4 font-display text-xl font-bold uppercase tracking-wider text-volt-ink disabled:bg-surface-2 disabled:text-muted"
       >
-        {finishing ? "Saving…" : "Finish workout"}
+        {finishing
+          ? "Saving…"
+          : allLogged
+            ? "Finish workout"
+            : `${loggedCount} of ${setList.length} sets logged`}
       </button>
+
+      {restRemaining !== null && restRemaining > 0 && (
+        <div aria-hidden="true" className="h-20" />
+      )}
+
+      {restRemaining !== null && restRemaining > 0 && (
+        <div
+          role="timer"
+          aria-label="Rest timer"
+          className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 mx-auto max-w-md px-4"
+        >
+          <div className="overflow-hidden rounded-2xl border border-line bg-surface-2 shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+                  Rest
+                </p>
+                <p className="font-display text-4xl font-extrabold leading-none tabular-nums">
+                  {formatClock(restRemaining)}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRestRemaining((r) => (r ?? 0) + 30)}
+                  className="rounded-xl border border-line px-3 py-2 text-sm font-semibold"
+                >
+                  +30s
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRestRemaining(null)}
+                  className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-bg"
+                >
+                  Skip
+                </button>
+              </div>
+            </div>
+            <div className="h-1 bg-line">
+              <div
+                className="h-full bg-volt transition-[width] duration-1000 ease-linear"
+                style={{
+                  width: `${Math.min(100, (restRemaining / restSeconds) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

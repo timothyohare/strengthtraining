@@ -32,7 +32,7 @@ export function ProgressChart({
 }) {
   if (points.length < 2) {
     return (
-      <p className="text-sm text-neutral-500">
+      <p className="rounded-2xl bg-surface p-5 text-sm text-muted">
         Log a couple more {liftName} sessions to see a progress chart.
       </p>
     );
@@ -62,8 +62,8 @@ export function ProgressChart({
   const labelIndices = [...new Set([0, Math.floor(lastIndex / 2), lastIndex])];
 
   return (
-    <div className="rounded border border-neutral-200 p-4">
-      <h3 className="mb-2 text-sm font-semibold text-neutral-700">
+    <div className="rounded-2xl bg-surface p-4">
+      <h3 className="mb-2 font-display text-lg font-bold uppercase tracking-wide">
         {liftName} progress
       </h3>
       <svg
@@ -79,7 +79,7 @@ export function ProgressChart({
               x2={WIDTH - PAD_RIGHT}
               y1={yAt(t)}
               y2={yAt(t)}
-              className="stroke-neutral-200"
+              className="stroke-line"
               strokeWidth={1}
             />
             <text
@@ -87,7 +87,7 @@ export function ProgressChart({
               y={yAt(t)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-neutral-400 text-[10px]"
+              className="fill-muted text-[11px]"
             >
               {Math.round(t)}
             </text>
@@ -97,8 +97,8 @@ export function ProgressChart({
         <path
           d={linePath}
           fill="none"
-          className="stroke-neutral-800"
-          strokeWidth={2}
+          className="stroke-volt"
+          strokeWidth={3}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
@@ -109,7 +109,7 @@ export function ProgressChart({
             cx={xAt(i)}
             cy={yAt(p.weight)}
             r={4}
-            className={p.completed ? "fill-green-700" : "fill-amber-700"}
+            className={p.completed ? "fill-volt" : "fill-miss"}
           >
             <title>{`${p.date}: ${p.weight} ${units} (${p.completed ? "completed" : "missed a set"})`}</title>
           </circle>
@@ -127,14 +127,14 @@ export function ProgressChart({
                   ? "end"
                   : "middle"
             }
-            className="fill-neutral-400 text-[10px]"
+            className="fill-muted text-[11px]"
           >
             {points[i].date}
           </text>
         ))}
       </svg>
 
-      <details className="mt-2 text-sm text-neutral-500">
+      <details className="mt-2 text-sm text-muted">
         <summary>View as table</summary>
         <table className="mt-2 w-full text-left text-xs">
           <thead>
@@ -151,7 +151,7 @@ export function ProgressChart({
                 <td className="pr-4">
                   {p.weight} {units}
                 </td>
-                <td className={p.completed ? "text-green-700" : "text-amber-700"}>
+                <td className={p.completed ? "text-volt" : "text-miss"}>
                   {p.completed ? "Completed" : "Missed"}
                 </td>
               </tr>

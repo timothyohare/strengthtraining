@@ -1,38 +1,34 @@
+import { Screen } from "../BottomNav";
+
 function Bar({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded bg-neutral-200 ${className}`}
-    />
-  );
+  return <div className={`animate-pulse rounded-lg bg-surface-2 ${className}`} />;
 }
 
 export default function Loading() {
   return (
-    <main className="flex min-h-dvh flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <Bar className="h-6 w-36" />
-          <Bar className="h-4 w-24" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Bar className="h-8 w-20" />
-          <Bar className="h-8 w-20" />
-          <Bar className="h-8 w-20" />
-        </div>
+    <Screen>
+      <div className="flex flex-col gap-2">
+        <Bar className="h-3 w-20" />
+        <Bar className="h-9 w-44" />
       </div>
-
-      <div className="flex flex-col gap-4">
-        {[0, 1, 2].map((i) => (
-          <section
-            key={i}
-            className="rounded border border-neutral-200 p-4"
-          >
-            <Bar className="h-5 w-32" />
-            <Bar className="mt-2 h-8 w-48" />
-            <Bar className="mt-2 h-4 w-40" />
-          </section>
-        ))}
-      </div>
-    </main>
+      <Bar className="h-4 w-64" />
+      {[0, 1, 2].map((i) => (
+        <section key={i} className="rounded-2xl bg-surface p-4">
+          <div className="flex items-center justify-between">
+            <Bar className="h-6 w-28" />
+            <Bar className="h-9 w-20" />
+          </div>
+          <Bar className="mt-2 h-4 w-36" />
+          <div className="mt-4 grid grid-cols-5 gap-2.5">
+            {[0, 1, 2, 3, 4].map((j) => (
+              <div
+                key={j}
+                className="aspect-square animate-pulse rounded-full bg-surface-2"
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </Screen>
   );
 }

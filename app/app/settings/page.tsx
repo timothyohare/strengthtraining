@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
@@ -8,6 +7,7 @@ import {
   getProfile,
   getSettings,
 } from "@/lib/db/schema";
+import { Screen, ScreenHeader } from "../BottomNav";
 import { switchUnits, saveSettings } from "./actions";
 
 export default async function SettingsPage() {
@@ -31,105 +31,103 @@ export default async function SettingsPage() {
   const units = profile?.units ?? "kg";
   const resolvedSettings = settings ?? DEFAULT_SETTINGS;
 
-  return (
-    <main className="flex min-h-dvh flex-col gap-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <Link
-          href="/today"
-          className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
-        >
-          Back to today
-        </Link>
-      </div>
+  const input =
+    "w-full rounded-xl border border-line bg-surface-2 px-3 py-2.5 text-base text-ink tabular-nums outline-none focus:border-volt";
+  const label = "flex flex-col gap-1.5 text-sm font-medium text-muted";
+  const card = "rounded-2xl bg-surface p-4";
+  const cardTitle =
+    "font-display text-xl font-bold uppercase tracking-wide text-ink";
 
-      <section className="rounded border border-neutral-200 p-4">
-        <h2 className="font-semibold">Units</h2>
-        <p className="mt-1 text-sm text-neutral-500">
-          Switching units converts every stored weight below to the
-          equivalent value in the new unit, so nothing needs re-entering just
-          because the label changed.
+  return (
+    <Screen>
+      <ScreenHeader eyebrow={`Signed in as ${userId}`} title="Settings" />
+
+      <section className={card}>
+        <h2 className={cardTitle}>Units</h2>
+        <p className="mt-1 text-sm text-muted">
+          Switching converts every saved weight to the new unit, so you
+          don&rsquo;t need to re-enter anything.
         </p>
         <form action={switchUnits} className="mt-3 flex items-center gap-2">
-          <select
-            name="units"
-            defaultValue={units}
-            className="rounded border border-neutral-300 px-2 py-1.5 text-sm"
-          >
-            <option value="kg">kg</option>
-            <option value="lb">lb</option>
+          <select name="units" defaultValue={units} className={`${input} flex-1`}>
+            <option value="kg">Kilograms (kg)</option>
+            <option value="lb">Pounds (lb)</option>
           </select>
           <button
             type="submit"
-            className="rounded border border-neutral-300 px-3 py-1.5 text-sm"
+            className="rounded-xl border border-line px-4 py-2.5 text-sm font-semibold"
           >
-            Switch units
+            Switch
           </button>
         </form>
       </section>
 
       <form action={saveSettings} className="flex flex-col gap-4">
-        <section className="rounded border border-neutral-200 p-4">
-          <h2 className="font-semibold">Bar &amp; plates</h2>
+        <section className={card}>
+          <h2 className={cardTitle}>Bar &amp; plates</h2>
           <div className="mt-3 flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm">
+            <label className={label}>
               Bar weight ({units})
               <input
                 type="number"
+                inputMode="decimal"
                 step="0.5"
                 name="barWeight"
                 defaultValue={resolvedSettings.barWeight}
-                className="rounded border border-neutral-300 px-2 py-1.5"
+                className={input}
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              Available plates ({units}, comma separated, one side)
+            <label className={label}>
+              Plates you own ({units}, one side, separated by commas)
               <input
                 type="text"
                 name="availablePlates"
                 defaultValue={resolvedSettings.availablePlates.join(", ")}
-                className="rounded border border-neutral-300 px-2 py-1.5"
+                className={input}
               />
             </label>
-            <label className="flex flex-col gap-1 text-sm">
+            <label className={label}>
               Rest timer (seconds)
               <input
                 type="number"
+                inputMode="numeric"
                 step="1"
                 name="restTimerSeconds"
                 defaultValue={resolvedSettings.restTimerSeconds}
-                className="rounded border border-neutral-300 px-2 py-1.5"
+                className={input}
               />
             </label>
           </div>
         </section>
 
         {lifts.length > 0 && (
-          <section className="rounded border border-neutral-200 p-4">
-            <h2 className="font-semibold">Lifts</h2>
-            <div className="mt-3 flex flex-col gap-4">
+          <section className={card}>
+            <h2 className={cardTitle}>Lifts</h2>
+            <div className="mt-3 flex flex-col divide-y divide-line">
               {lifts.map((lift) => (
-                <div key={lift.liftName} className="flex flex-col gap-2">
-                  <h3 className="text-sm font-medium">{lift.liftName}</h3>
+                <div key={lift.liftName} className="flex flex-col gap-2 py-3">
+                  <h3 className="font-semibold">{lift.liftName}</h3>
                   <div className="flex gap-3">
-                    <label className="flex flex-1 flex-col gap-1 text-sm">
-                      Current weight ({units})
+                    <label className={`${label} flex-1`}>
+                      Working weight ({units})
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="0.5"
                         name={`weight-${lift.liftName}`}
                         defaultValue={lift.currentWeight}
-                        className="rounded border border-neutral-300 px-2 py-1.5"
+                        className={input}
                       />
                     </label>
-                    <label className="flex flex-1 flex-col gap-1 text-sm">
-                      Increment ({units})
+                    <label className={`${label} flex-1`}>
+                      Add each time ({units})
                       <input
                         type="number"
+                        inputMode="decimal"
                         step="0.5"
                         name={`increment-${lift.liftName}`}
                         defaultValue={lift.increment}
-                        className="rounded border border-neutral-300 px-2 py-1.5"
+                        className={input}
                       />
                     </label>
                   </div>
@@ -141,11 +139,20 @@ export default async function SettingsPage() {
 
         <button
           type="submit"
-          className="rounded bg-black py-4 text-lg font-semibold text-white"
+          className="rounded-2xl bg-volt py-4 font-display text-xl font-bold uppercase tracking-wider text-volt-ink"
         >
-          Save
+          Save settings
         </button>
       </form>
-    </main>
+
+      <form action="/api/logout" method="POST">
+        <button
+          type="submit"
+          className="w-full rounded-2xl border border-line py-3.5 font-semibold text-muted"
+        >
+          Log out
+        </button>
+      </form>
+    </Screen>
   );
 }
