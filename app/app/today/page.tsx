@@ -72,7 +72,6 @@ export default async function TodayPage() {
         <WorkoutSession
           key={sessionId}
           workoutType={workoutType}
-          date={new Date().toISOString().slice(0, 10)}
           sessionId={sessionId}
           units={units}
           restSeconds={restTimerSeconds}

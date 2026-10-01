@@ -43,8 +43,13 @@ export const userPk = (userId: string) => `USER#${userId}`;
 export const profileSk = () => "PROFILE";
 export const liftSk = (liftName: string) => `LIFT#${liftName}`;
 export const settingsSk = () => "SETTINGS";
-export const sessionSk = (isoDate: string, sessionId: string) =>
-  `SESSION#${isoDate}#${sessionId}`;
+// completedAt (an ISO timestamp) sits between the date and the random id so
+// two sessions on the same date sort in the order they were finished.
+export const sessionSk = (
+  isoDate: string,
+  completedAt: string,
+  sessionId: string,
+) => `SESSION#${isoDate}#${completedAt}#${sessionId}`;
 
 // ---- Item shapes -------------------------------------------------------
 
@@ -93,7 +98,8 @@ export interface SessionSet {
 
 export interface SessionItem {
   sessionId: string;
-  date: string; // ISO date
+  date: string; // ISO date, the lifter's local calendar date
+  completedAt: string; // ISO timestamp, set by the server on save
   workoutType: "A" | "B";
   status: "completed" | "in_progress";
   sets: SessionSet[];
@@ -166,7 +172,7 @@ export async function putSession(userId: string, session: SessionItem) {
       TableName: TABLE_NAME,
       Item: {
         PK: userPk(userId),
-        SK: sessionSk(session.date, session.sessionId),
+        SK: sessionSk(session.date, session.completedAt, session.sessionId),
         ...session,
       },
     }),
@@ -183,7 +189,7 @@ export async function getMostRecentSessions(userId: string, limit: number) {
         ":pk": userPk(userId),
         ":prefix": "SESSION#",
       },
-      ScanIndexForward: false, // newest first, since SK embeds an ISO date
+      ScanIndexForward: false, // newest first: SK embeds date, then completion time
       Limit: limit,
     }),
   );

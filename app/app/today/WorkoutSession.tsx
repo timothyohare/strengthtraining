@@ -12,6 +12,7 @@ import type { WorkoutType } from "@/lib/program-engine/schedule";
 import type { WarmupSet } from "@/lib/program-engine/warmup";
 import type { Units } from "@/lib/units";
 import { nextSetState, PENDING_SET, type SetState } from "@/lib/set-tap";
+import { localIsoDate } from "@/lib/dates";
 
 interface SessionLift {
   liftName: string;
@@ -52,14 +53,12 @@ function formatPlates(perSide: number[], units: Units) {
 
 export function WorkoutSession({
   workoutType,
-  date,
   sessionId,
   units,
   restSeconds,
   lifts,
 }: {
   workoutType: WorkoutType;
-  date: string;
   sessionId: string;
   units: Units;
   restSeconds: number;
@@ -129,7 +128,7 @@ export function WorkoutSession({
 
     const result = await finishWorkoutSession({
       workoutType,
-      date,
+      date: localIsoDate(new Date()),
       sessionId,
       results,
     });

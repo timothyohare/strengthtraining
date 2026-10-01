@@ -5,6 +5,7 @@ import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 import { getAllLifts, putLift, putSession } from "@/lib/db/schema";
 import { nextLiftState } from "@/lib/program-engine/progression";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
+import { isIsoDate } from "@/lib/dates";
 
 export interface SetResult {
   liftName: string;
@@ -53,10 +54,16 @@ export async function finishWorkoutSession(
     throw new Error("Not authenticated");
   }
   const userId = session.userId;
+  // The date comes from the client (it's the lifter's local date) and goes
+  // into the sort key, so reject anything that isn't a real YYYY-MM-DD.
+  if (!isIsoDate(input.date)) {
+    throw new Error("Invalid workout date");
+  }
 
   await putSession(userId, {
     sessionId: input.sessionId,
     date: input.date,
+    completedAt: new Date().toISOString(),
     workoutType: input.workoutType,
     status: "completed",
     sets: input.results,
