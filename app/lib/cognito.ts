@@ -1,8 +1,14 @@
 import { createHmac } from "node:crypto";
 import {
+  ChangePasswordCommand,
   CognitoIdentityProviderClient,
   InitiateAuthCommand,
+  InvalidParameterException,
+  InvalidPasswordException,
+  LimitExceededException,
   NotAuthorizedException,
+  PasswordHistoryPolicyViolationException,
+  TooManyRequestsException,
   UserNotFoundException,
 } from "@aws-sdk/client-cognito-identity-provider";
 
@@ -36,14 +42,18 @@ function computeSecretHash(username: string): string {
     .digest("base64");
 }
 
-export async function verifyCognitoCredentials(
-  username: string,
-  password: string,
-): Promise<{ ok: true } | { ok: false }> {
-  const client = new CognitoIdentityProviderClient({
+function cognitoClient() {
+  return new CognitoIdentityProviderClient({
     region: process.env.COGNITO_REGION ?? "ap-southeast-2",
   });
+}
 
+/** Returns the user's access token, or null if the credential is wrong. */
+async function authenticate(
+  client: CognitoIdentityProviderClient,
+  username: string,
+  password: string,
+): Promise<string | null> {
   try {
     const result = await client.send(
       new InitiateAuthCommand({
@@ -57,13 +67,68 @@ export async function verifyCognitoCredentials(
       }),
     );
 
-    return result.AuthenticationResult ? { ok: true } : { ok: false };
+    return result.AuthenticationResult?.AccessToken ?? null;
   } catch (err) {
     if (
       err instanceof NotAuthorizedException ||
       err instanceof UserNotFoundException
     ) {
-      return { ok: false };
+      return null;
+    }
+    throw err;
+  }
+}
+
+export async function verifyCognitoCredentials(
+  username: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false }> {
+  const accessToken = await authenticate(cognitoClient(), username, password);
+  return accessToken ? { ok: true } : { ok: false };
+}
+
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; reason: "wrong-current" | "rejected" | "rate-limited" };
+
+/**
+ * Cognito's ChangePassword needs the user's access token, but the app only
+ * keeps its own session cookie (see the note above). So this signs in again
+ * with the current password to get a short-lived token, then uses it right
+ * away -- which also proves the current password before anything changes.
+ */
+export async function changeCognitoPassword(
+  username: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<ChangePasswordResult> {
+  const client = cognitoClient();
+
+  try {
+    const accessToken = await authenticate(client, username, currentPassword);
+    if (!accessToken) return { ok: false, reason: "wrong-current" };
+
+    await client.send(
+      new ChangePasswordCommand({
+        AccessToken: accessToken,
+        PreviousPassword: currentPassword,
+        ProposedPassword: newPassword,
+      }),
+    );
+    return { ok: true };
+  } catch (err) {
+    if (
+      err instanceof InvalidPasswordException ||
+      err instanceof InvalidParameterException ||
+      err instanceof PasswordHistoryPolicyViolationException
+    ) {
+      return { ok: false, reason: "rejected" };
+    }
+    if (
+      err instanceof LimitExceededException ||
+      err instanceof TooManyRequestsException
+    ) {
+      return { ok: false, reason: "rate-limited" };
     }
     throw err;
   }

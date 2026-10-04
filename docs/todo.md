@@ -238,8 +238,13 @@ in a real browser.
 
 ## 9. Polish / v1.1 candidates (explicitly deferred)
 
-- [ ] Change-password screen in Settings (Cognito `ChangePassword`) — today the only way is
-  the admin CLI command in `human-todo.md`; most useful next feature now the app is in use
+- [x] Change-password screen in Settings (Cognito `ChangePassword`) — `app/settings/password/`
+  (linked from Settings). `lib/cognito.ts` `changeCognitoPassword` re-authenticates with the
+  current password (`InitiateAuth`) to get an access token, then calls `ChangePassword`, so
+  still no IAM role needed. Client-side rules mirror the pool policy (`lib/password.ts`, keep
+  in step with `infra/cognito.yaml`). Verified locally: mismatch and wrong-current-password
+  paths against the real pool; the success path is not yet exercised (would change `tim`'s
+  real password) — try it once on the live site
 - [ ] Passkey login instead of/alongside password
 - [ ] Self-service invite flow for a second user
 - [ ] Export workout history (CSV/JSON)

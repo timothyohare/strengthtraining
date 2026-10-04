@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
@@ -144,6 +145,19 @@ export default async function SettingsPage() {
           Save settings
         </button>
       </form>
+
+      <section className={card}>
+        <h2 className={cardTitle}>Password</h2>
+        <p className="mt-1 text-sm text-muted">
+          Change the password you use to log in.
+        </p>
+        <Link
+          href="/settings/password"
+          className="mt-3 block rounded-xl border border-line px-4 py-2.5 text-center text-sm font-semibold"
+        >
+          Change password
+        </Link>
+      </section>
 
       <form action="/api/logout" method="POST">
         <button

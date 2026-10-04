@@ -43,9 +43,9 @@ Do these roughly in order; later engineering tasks in `todo.md` depend on severa
   in this repo, not in any file). If it's lost, reset it yourself:
   `aws cognito-idp admin-set-user-password --user-pool-id <id> --username tim --password '<new>' --permanent --region ap-southeast-2`
   (get `<id>` from `aws cloudformation describe-stacks --stack-name lift5-cognito --region ap-southeast-2 --query "Stacks[0].Outputs"`)
-- [ ] There's no self-service "forgot password" or "change password" flow built yet — add one
-  if that becomes annoying. Now the most useful missing feature, since the live app is in
-  daily use (tracked in `todo.md` §9)
+- [ ] Change password is now self-service (Settings → Change password). Try it once on the
+  live site to confirm the success path, then update your password manager. There's still no
+  "forgot password" flow — if the password is lost, use the admin CLI command above
 
 ## Cost verification (ongoing, not one-time)
 
