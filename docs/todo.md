@@ -69,11 +69,17 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
   Console env vars: `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_REGION`,
   `COGNITO_USER_POOL_ID`, `DYNAMODB_TABLE` (`lift5-dev`), `SESSION_SECRET` (prod-only random
   value, not in `.env.local`). `AWS_*` names are reserved by Amplify and can't be set.
-- [ ] Configure environment separation (dev vs prod) if desired, or single environment for a
-  personal-scale project (decide and document the choice) — `infra/cognito.yaml` already
-  takes a `StageName` parameter for this. **Current state:** the live site uses the "dev"
-  resources (`lift5-dev` table, `lift5-users-dev` pool, `lift5-amplify-compute-dev` role);
-  there is no separate prod stack. Not yet decided whether that's the deliberate choice.
+- [x] Environment separation — **decided 2026-10-04: single environment, keep the "dev"
+  names.** The live site at https://strength.ohare.id.au runs on the resources created with
+  `StageName=dev` (`lift5-dev` table, `lift5-users-dev` pool, `lift5-amplify-compute-dev`
+  role), and these are the production resources despite the name. No separate prod stack:
+  for a personal-scale app, a second set of resources and a rename/data migration would add
+  cost and work for no real benefit. Consequences to remember:
+  - Local dev (`.env.local`) talks to the same table and user pool as the live site, so
+    test against DynamoDB Local (`DYNAMODB_ENDPOINT`) when trying anything destructive.
+  - Don't delete or recreate the `lift5-dynamodb`, `lift5-cognito` or `lift5-amplify-role`
+    stacks on the assumption that "dev" means disposable.
+  - If a real prod split is ever wanted, deploy the same templates with `StageName=prod`.
 
 ## 2. Data model
 
