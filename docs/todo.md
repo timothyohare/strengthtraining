@@ -26,15 +26,54 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
   on-demand billing confirmed via `aws dynamodb describe-table`) — table `lift5-dev`
 - [x] Wired `@aws-sdk/lib-dynamodb` access from the Next.js server — `app/lib/db/schema.ts`,
   ported directly from the spike, zero logic changes
-- [ ] Production (Amplify Hosting) will need its own IAM permissions for this table on the
-  app's compute role — local dev works via ambient AWS CLI credentials, which won't exist on
-  the deployed app; not yet configured
-- [ ] **Do not add `amplify.yml`** when connecting the repo to Amplify Hosting — see
-  `app/CLAUDE.md`'s "Amplify deploy lessons" for why (breaks the Next.js SSR adapter's
-  auto-detection, confirmed root cause of a real nrl-predictor outage)
+- [x] Amplify SSR compute role `lift5-amplify-compute-dev` via `infra/amplify-role.yaml`
+  (stack `lift5-amplify-role`): `GetItem`/`PutItem`/`Query` on `lift5-dev` only, trusted by
+  `amplify.amazonaws.com`. Cognito login uses the app client secret, so no Cognito IAM
+  permissions. Add `UpdateItem`/`DeleteItem` there if the app ever issues those commands.
+- [x] **No `amplify.yml` in the repo** — see `app/CLAUDE.md`'s "Amplify deploy lessons".
+  The build spec lives in the Amplify console (App settings → Build settings) instead, and
+  this is the only copy outside AWS:
+
+  ```yaml
+  version: 1
+  applications:
+    - frontend:
+        phases:
+          preBuild:
+            commands:
+              - nvm use 22                      # Next 16 needs Node >= 20.9
+              - npm install -g pnpm@11.20.0     # must match packageManager in package.json
+              - pnpm install --frozen-lockfile
+          build:
+            commands:
+              # Console env vars exist only at build time; this makes them visible to
+              # the SSR runtime. None are NEXT_PUBLIC_, so none reach the browser.
+              - env | grep -E '^(COGNITO_|SESSION_SECRET|DYNAMODB_TABLE)' >> .env.production
+              - pnpm run build
+        artifacts:
+          baseDirectory: .next
+          files:
+            - "**/*"
+        cache:
+          paths:
+            - .next/cache/**/*
+            - node_modules/**/*
+      appRoot: app
+  ```
+
+  Why the pnpm pin: an unpinned `npm install -g pnpm` installs a newer pnpm, which then
+  downloads its standalone 11.20.0 build to honour `packageManager`; that build needs
+  `libatomic.so.1`, which the Amplify image lacks (and `dnf install` isn't allowed there).
+  Bump the pin whenever `packageManager` changes.
+
+  Console env vars: `COGNITO_CLIENT_ID`, `COGNITO_CLIENT_SECRET`, `COGNITO_REGION`,
+  `COGNITO_USER_POOL_ID`, `DYNAMODB_TABLE` (`lift5-dev`), `SESSION_SECRET` (prod-only random
+  value, not in `.env.local`). `AWS_*` names are reserved by Amplify and can't be set.
 - [ ] Configure environment separation (dev vs prod) if desired, or single environment for a
   personal-scale project (decide and document the choice) — `infra/cognito.yaml` already
-  takes a `StageName` parameter for this
+  takes a `StageName` parameter for this. **Current state:** the live site uses the "dev"
+  resources (`lift5-dev` table, `lift5-users-dev` pool, `lift5-amplify-compute-dev` role);
+  there is no separate prod stack. Not yet decided whether that's the deliberate choice.
 
 ## 2. Data model
 
@@ -182,12 +221,19 @@ in a real browser.
 
 ## 8. Deployment
 
-- [ ] Connect repo to Amplify Hosting, verify SSR build works end-to-end
-- [ ] Set up a budget alert threshold check-in (see `human-todo.md` for the actual AWS Budgets console step)
+- [x] Connected repo to Amplify Hosting (app `d19xtyaa53gf8v`, branch `main`, monorepo root
+  `app`); SSR build and login → workout → save verified on the live site. Live at
+  https://strength.ohare.id.au (see `human-todo.md` → Domain & hosting).
+  - Redirects must not be built from `request.url`: behind Amplify's proxy it reports
+    `localhost:3000`. Use `lib/redirect.ts` (`redirectTo` in route handlers, `publicUrl` in
+    `proxy.ts`).
+- [x] Budget alert set up — `monthly-account-60usd`, details in `human-todo.md`
 - [ ] Confirm a full cold-start → login → log a set → logout cycle works on a real phone over cellular data, not just Wi-Fi/desktop
 
 ## 9. Polish / v1.1 candidates (explicitly deferred)
 
+- [ ] Change-password screen in Settings (Cognito `ChangePassword`) — today the only way is
+  the admin CLI command in `human-todo.md`; most useful next feature now the app is in use
 - [ ] Passkey login instead of/alongside password
 - [ ] Self-service invite flow for a second user
 - [ ] Export workout history (CSV/JSON)
