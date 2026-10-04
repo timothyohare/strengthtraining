@@ -1,9 +1,7 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { requireSession } from "@/lib/auth";
 import {
   DEFAULT_SETTINGS,
   getAllLifts,
@@ -17,12 +15,7 @@ import {
 import { convertWeight, type Units } from "@/lib/units";
 
 async function requireUserId(): Promise<string> {
-  const cookieStore = await cookies();
-  const session = verifySessionToken(
-    cookieStore.get(SESSION_COOKIE.name)?.value,
-  );
-  if (!session) redirect("/login");
-  return session.userId;
+  return (await requireSession()).userId;
 }
 
 function isUnits(value: FormDataEntryValue | null): value is Units {
@@ -47,6 +40,7 @@ export async function switchUnits(formData: FormData) {
   if (newUnits === prevUnits) return;
 
   await putProfile(userId, {
+    ...profile,
     displayName: profile?.displayName ?? userId,
     createdAt: profile?.createdAt ?? new Date().toISOString(),
     units: newUnits,

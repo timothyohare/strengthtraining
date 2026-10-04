@@ -22,8 +22,8 @@ export function ChangePasswordForm({ username }: { username: string }) {
         role="status"
         className="rounded-xl border border-volt/40 bg-volt/10 px-4 py-3 text-sm text-ink"
       >
-        Password changed. Use the new one next time you log in &mdash; you
-        stay signed in on this device.
+        Password changed. You&rsquo;re still signed in here; every other
+        device has been signed out.
       </p>
     );
   }

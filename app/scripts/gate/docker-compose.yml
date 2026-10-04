@@ -1,0 +1,8 @@
+# Throwaway DynamoDB for gate-verify (.claude/harness.json). In-memory, so
+# every run starts empty; port 8812 keeps clear of other projects' 8000.
+services:
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    ports:
+      - "8812:8000"
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]

@@ -4,6 +4,7 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  UpdateCommand,
 } from "@aws-sdk/lib-dynamodb";
 
 /**
@@ -57,6 +58,8 @@ export interface ProfileItem {
   displayName: string;
   units: "lb" | "kg";
   createdAt: string;
+  // Unix ms; session tokens issued before this are rejected (lib/session.ts).
+  sessionsValidAfter?: number;
 }
 
 export interface LiftItem {
@@ -112,6 +115,21 @@ export async function putProfile(userId: string, profile: ProfileItem) {
     new PutCommand({
       TableName: TABLE_NAME,
       Item: { PK: userPk(userId), SK: profileSk(), ...profile },
+    }),
+  );
+}
+
+/**
+ * Signs the user out everywhere. An update, not a put, so it never clobbers
+ * the rest of the profile.
+ */
+export async function revokeSessions(userId: string, at: number) {
+  await ddb.send(
+    new UpdateCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: userPk(userId), SK: profileSk() },
+      UpdateExpression: "SET sessionsValidAfter = :at",
+      ExpressionAttributeValues: { ":at": at },
     }),
   );
 }

@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { requireSession } from "@/lib/auth";
 import {
   DEFAULT_SETTINGS,
   getAllLifts,
@@ -13,14 +11,7 @@ import { switchUnits, saveSettings } from "./actions";
 
 export default async function SettingsPage() {
   // Defensive check, same as app/today/page.tsx.
-  const cookieStore = await cookies();
-  const session = verifySessionToken(
-    cookieStore.get(SESSION_COOKIE.name)?.value,
-  );
-
-  if (!session) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const userId = session.userId;
   const [profile, settings, lifts] = await Promise.all([

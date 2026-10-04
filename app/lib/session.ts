@@ -17,6 +17,33 @@ export const SESSION_COOKIE = {
 export interface SessionPayload {
   userId: string;
   exp: number; // unix seconds
+  // Unix ms. Absent on tokens issued before logout revocation existed.
+  issuedAt?: number;
+}
+
+/** Cookie attributes for a freshly issued session, shared by every issuer. */
+export function sessionCookieOptions() {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax" as const,
+    maxAge: SESSION_COOKIE.maxAge,
+    path: "/",
+  };
+}
+
+/**
+ * Logging out or changing the password stamps the user's profile with
+ * `sessionsValidAfter`; any token issued before that is dead, on every
+ * device. A token with no `issuedAt` predates revocation and counts as
+ * issued at 0, so it survives only until the user's first logout.
+ */
+export function isRevoked(
+  payload: SessionPayload,
+  sessionsValidAfter: number | undefined,
+): boolean {
+  if (sessionsValidAfter === undefined) return false;
+  return (payload.issuedAt ?? 0) < sessionsValidAfter;
 }
 
 function getSecret(): string {
@@ -33,10 +60,14 @@ function base64url(input: Buffer | string): string {
   return Buffer.from(input).toString("base64url");
 }
 
-export function createSessionToken(userId: string): string {
+export function createSessionToken(
+  userId: string,
+  now: number = Date.now(),
+): string {
   const payload: SessionPayload = {
     userId,
-    exp: Math.floor(Date.now() / 1000) + SESSION_COOKIE.maxAge,
+    exp: Math.floor(now / 1000) + SESSION_COOKIE.maxAge,
+    issuedAt: now,
   };
   const payloadB64 = base64url(JSON.stringify(payload));
   const signature = createHmac("sha256", getSecret())

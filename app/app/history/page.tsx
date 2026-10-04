@@ -1,7 +1,5 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { requireSession } from "@/lib/auth";
 import { getAllSessions, getProfile } from "@/lib/db/schema";
 import { WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
 import { Screen, ScreenHeader } from "../BottomNav";
@@ -16,14 +14,7 @@ export default async function HistoryPage({
 }: PageProps<"/history">) {
   // Defensive check, same as app/today/page.tsx -- see that file's comment
   // for why this isn't left to app/proxy.ts alone.
-  const cookieStore = await cookies();
-  const session = verifySessionToken(
-    cookieStore.get(SESSION_COOKIE.name)?.value,
-  );
-
-  if (!session) {
-    redirect("/login");
-  }
+  const session = await requireSession();
 
   const { lift: liftFilter } = await searchParams;
   const activeLift = Array.isArray(liftFilter) ? liftFilter[0] : liftFilter;

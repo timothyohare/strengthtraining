@@ -3,7 +3,17 @@
   "typecheck": "cd app && pnpm typecheck",
   "test": "cd app && pnpm test",
   "build": "cd app && pnpm build",
-  "boot": "cd app && pnpm dev",
-  "ready": "http://localhost:3000"
+  "mockUp": "docker compose -f app/scripts/gate/docker-compose.yml up -d",
+  "mockDown": "docker compose -f app/scripts/gate/docker-compose.yml down",
+  "setup": "cd app && pnpm exec tsx scripts/gate/setup.ts",
+  "boot": "cd app && pnpm dev --port 3100",
+  "ready": "http://localhost:3100/login",
+  "acceptance": "cd app && pnpm exec tsx scripts/gate/acceptance.ts",
+  "env": {
+    "DYNAMODB_ENDPOINT": "http://localhost:8812",
+    "DYNAMODB_TABLE": "lift5-gate",
+    "AWS_REGION": "ap-southeast-2",
+    "SESSION_SECRET": "gate-verify-only-secret",
+    "GATE_BASE_URL": "http://localhost:3100"
+  }
 }
-

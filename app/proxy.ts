@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { publicUrl } from "@/lib/redirect";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { getSession } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/session";
 
 // Next.js 16 renamed `middleware.ts` to `proxy.ts` (same runtime behavior,
 // new file/export name) -- see node_modules/next/dist/docs/.../proxy.md.
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const token = request.cookies.get(SESSION_COOKIE.name)?.value;
-  const session = verifySessionToken(token);
+  const session = await getSession(token);
 
   if (!session) {
     return NextResponse.redirect(publicUrl(request, "/login"));

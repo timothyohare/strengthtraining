@@ -1,7 +1,8 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { getSession } from "@/lib/auth";
+import { SESSION_COOKIE } from "@/lib/session";
 import { getAllLifts, putLift, putSession } from "@/lib/db/schema";
 import { nextLiftState } from "@/lib/program-engine/progression";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
@@ -47,7 +48,7 @@ export async function finishWorkoutSession(
   input: FinishWorkoutInput,
 ): Promise<FinishWorkoutResult> {
   const cookieStore = await cookies();
-  const session = verifySessionToken(
+  const session = await getSession(
     cookieStore.get(SESSION_COOKIE.name)?.value,
   );
   if (!session) {

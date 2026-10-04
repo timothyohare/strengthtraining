@@ -1,6 +1,10 @@
 import { verifyCognitoCredentials } from "@/lib/cognito";
 import { redirectTo } from "@/lib/redirect";
-import { createSessionToken, SESSION_COOKIE } from "@/lib/session";
+import {
+  createSessionToken,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/session";
 
 export async function POST(request: Request) {
   const form = await request.formData();
@@ -18,12 +22,6 @@ export async function POST(request: Request) {
 
   const token = createSessionToken(username);
   const response = redirectTo("/today", 303);
-  response.cookies.set(SESSION_COOKIE.name, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: SESSION_COOKIE.maxAge,
-    path: "/",
-  });
+  response.cookies.set(SESSION_COOKIE.name, token, sessionCookieOptions());
   return response;
 }

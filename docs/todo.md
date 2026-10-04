@@ -27,9 +27,9 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
 - [x] Wired `@aws-sdk/lib-dynamodb` access from the Next.js server — `app/lib/db/schema.ts`,
   ported directly from the spike, zero logic changes
 - [x] Amplify SSR compute role `lift5-amplify-compute-dev` via `infra/amplify-role.yaml`
-  (stack `lift5-amplify-role`): `GetItem`/`PutItem`/`Query` on `lift5-dev` only, trusted by
+  (stack `lift5-amplify-role`): `GetItem`/`PutItem`/`Query`/`UpdateItem` on `lift5-dev` only, trusted by
   `amplify.amazonaws.com`. Cognito login uses the app client secret, so no Cognito IAM
-  permissions. Add `UpdateItem`/`DeleteItem` there if the app ever issues those commands.
+  permissions. Add `DeleteItem` there if the app ever issues that command.
 - [x] **No `amplify.yml` in the repo** — see `app/CLAUDE.md`'s "Amplify deploy lessons".
   The build spec lives in the Amplify console (App settings → Build settings) instead, and
   this is the only copy outside AWS:
@@ -245,6 +245,10 @@ in a real browser.
   in step with `infra/cognito.yaml`). Verified locally: mismatch and wrong-current-password
   paths against the real pool; the success path is not yet exercised (would change `tim`'s
   real password) — try it once on the live site
+- [x] Logout and password change really end sessions — tokens carry `issuedAt`, the profile
+  carries `sessionsValidAfter`, and `lib/auth.ts` `getSession` checks both (proxy, pages and
+  actions all use it). Signs out every device. Proved by `gate-verify`'s acceptance checks
+  (`app/scripts/gate/`), which run against DynamoDB Local, never `lift5-dev`
 - [ ] Passkey login instead of/alongside password
 - [ ] Self-service invite flow for a second user
 - [ ] Export workout history (CSV/JSON)

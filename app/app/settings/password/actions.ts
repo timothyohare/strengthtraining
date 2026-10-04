@@ -1,8 +1,13 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
+import { requireSession } from "@/lib/auth";
+import { revokeSessions } from "@/lib/db/schema";
+import {
+  createSessionToken,
+  SESSION_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/session";
 import { changeCognitoPassword } from "@/lib/cognito";
 import { PASSWORD_RULES, validatePasswordChange } from "@/lib/password";
 
@@ -22,11 +27,7 @@ export async function changePassword(
   _prev: ChangePasswordState,
   formData: FormData,
 ): Promise<ChangePasswordState> {
-  const cookieStore = await cookies();
-  const session = verifySessionToken(
-    cookieStore.get(SESSION_COOKIE.name)?.value,
-  );
-  if (!session) redirect("/login");
+  const session = await requireSession();
 
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
@@ -48,5 +49,16 @@ export async function changePassword(
   if (!result.ok) {
     return { status: "error", message: FAILURE_MESSAGES[result.reason] };
   }
+
+  // A new password should sign out every other device. Revoke everything,
+  // then hand this device a session issued after the cutoff.
+  const now = Date.now();
+  await revokeSessions(session.userId, now);
+  const cookieStore = await cookies();
+  cookieStore.set(
+    SESSION_COOKIE.name,
+    createSessionToken(session.userId, now),
+    sessionCookieOptions(),
+  );
   return { status: "success" };
 }
