@@ -9,7 +9,7 @@
  * because the old keys can't tell us:
  *
  *   pnpm exec tsx scripts/migrate-session-keys.ts                       # dry run
- *   pnpm exec tsx scripts/migrate-session-keys.ts --order id1,id2 --apply
+ *   pnpm exec tsx scripts/migrate-session-keys.ts --order 398903e0,239bbcf2 --apply
  *
  * Each item moves in one transaction (put new key, delete old), so a failure
  * part-way leaves every session either fully old or fully new.
@@ -19,8 +19,17 @@ import { ddb, sessionSk, TABLE_NAME } from "../lib/db/schema";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
-const orderArg = args[args.indexOf("--order") + 1];
-const order = args.includes("--order") ? orderArg.split(",") : [];
+const orderArg = args.includes("--order")
+  ? args[args.indexOf("--order") + 1]
+  : undefined;
+if (args.includes("--order") && (!orderArg || orderArg.startsWith("--"))) {
+  console.error("--order needs a comma-separated list of session ids");
+  process.exit(1);
+}
+// Ids may be given in full or as unique prefixes (e.g. the first 8 chars).
+const order = orderArg ? orderArg.split(",").map((id) => id.trim()) : [];
+const orderIndex = (sessionId: string) =>
+  order.findIndex((prefix) => sessionId.startsWith(prefix));
 
 interface LegacyItem {
   PK: string;
@@ -62,16 +71,18 @@ async function main() {
   const moves: { item: LegacyItem; completedAt: string }[] = [];
   for (const [key, items] of groups) {
     if (items.length > 1) {
-      const unordered = items.filter((i) => !order.includes(i.sessionId));
+      const unordered = items.filter((i) => orderIndex(i.sessionId) === -1);
       if (unordered.length > 0) {
         throw new Error(
           `${key} has ${items.length} sessions; pass --order with ids ` +
             items.map((i) => i.sessionId).join(", "),
         );
       }
-      items.sort(
-        (a, b) => order.indexOf(a.sessionId) - order.indexOf(b.sessionId),
-      );
+      const positions = items.map((i) => orderIndex(i.sessionId));
+      if (new Set(positions).size !== positions.length) {
+        throw new Error(`${key}: an --order prefix matches more than one session`);
+      }
+      items.sort((a, b) => orderIndex(a.sessionId) - orderIndex(b.sessionId));
     }
     items.forEach((item, i) => {
       const t = new Date(`${item.date}T00:00:00.000Z`);
