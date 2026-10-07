@@ -249,7 +249,17 @@ in a real browser.
   carries `sessionsValidAfter`, and `lib/auth.ts` `getSession` checks both (proxy, pages and
   actions all use it). Signs out every device. Proved by `gate-verify`'s acceptance checks
   (`app/scripts/gate/`), which run against DynamoDB Local, never `lift5-dev`
-- [ ] Passkey login instead of/alongside password
+- [x] Adjust a lift's weight mid-workout — tap the weight on `/today` for a full-screen
+  adjuster (steps from the smallest plate, live plate breakdown); `setLiftWeight` in
+  `app/today/actions.ts` saves it. It must not call `revalidatePath`: that refreshes `/today`,
+  remounts the workout and wipes the logged sets (found by click-testing)
+- [x] Workout in progress survives leaving `/today` (Settings, reload, iOS unloading the tab)
+  — kept in localStorage per user (`lib/workout-progress.ts`), restored for today's workout of
+  the same type, cleared on finish. Per device only
+- [x] Rest timer keeps real time while the page is hidden — stores the end time and works the
+  remainder out from the clock; no late beep on return
+- [ ] Rest-over notification while the app is in the background (iOS Web Push: Home Screen
+  app, server-sent at rest end)
 - [ ] Self-service invite flow for a second user
 - [ ] Export workout history (CSV/JSON)
 - [ ] Additional programs (Madcow, custom routines) — explicitly out of scope until v1 is used for a few weeks

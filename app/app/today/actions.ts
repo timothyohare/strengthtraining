@@ -108,3 +108,47 @@ export async function finishWorkoutSession(
 
   return { lifts: summaries };
 }
+
+/**
+ * Sets one lift's working weight from the workout screen, so the lifter can
+ * correct it mid-session without a trip to Settings. Saved straight away, so
+ * progression on finish starts from the weight actually lifted.
+ *
+ * Deliberately calls no revalidatePath -- not even for /settings. Revalidating
+ * from an action also refreshes the page it was called from, which gives
+ * /today a fresh session id and remounts the workout, wiping the sets already
+ * logged. Nothing needs it anyway: both pages read cookies, so they always
+ * render fresh, and the client updates its own copy of the weight.
+ */
+export async function setLiftWeight(
+  liftName: string,
+  weight: number,
+): Promise<void> {
+  const cookieStore = await cookies();
+  const session = await getSession(
+    cookieStore.get(SESSION_COOKIE.name)?.value,
+  );
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+  if (!Number.isFinite(weight) || weight <= 0 || weight > 1000) {
+    throw new Error("Invalid weight");
+  }
+
+  const lift = (await getAllLifts(session.userId)).find(
+    (l) => l.liftName === liftName,
+  );
+  if (!lift) {
+    throw new Error("Unknown lift");
+  }
+
+  await putLift(session.userId, {
+    liftName: lift.liftName,
+    currentWeight: Math.round(weight * 100) / 100,
+    increment: lift.increment,
+    roundTo: lift.roundTo,
+    setCount: lift.setCount,
+    failStreak: lift.failStreak,
+    deloadCount: lift.deloadCount,
+  });
+}

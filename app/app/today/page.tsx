@@ -8,10 +8,8 @@ import {
 } from "@/lib/db/schema";
 import { nextWorkoutType } from "@/lib/program-engine/schedule";
 import { WORKOUT_LIFTS } from "@/lib/program-engine/workouts";
-import { generateWarmupSets } from "@/lib/program-engine/warmup";
-import { calculatePlates } from "@/lib/program-engine/plates";
 import { Screen, ScreenHeader } from "../BottomNav";
-import { WorkoutSession } from "./WorkoutSession";
+import { WorkoutSessionLoader } from "./WorkoutSessionLoader";
 
 export default async function TodayPage() {
   // Defensive check, not just relying on proxy.ts -- Next's own guidance is
@@ -60,26 +58,20 @@ export default async function TodayPage() {
           .
         </p>
       ) : (
-        <WorkoutSession
+        <WorkoutSessionLoader
           key={sessionId}
+          userId={userId}
           workoutType={workoutType}
           sessionId={sessionId}
           units={units}
           restSeconds={restTimerSeconds}
+          barWeight={barWeight}
+          availablePlates={availablePlates}
           lifts={liftsForToday.map((lift) => ({
             liftName: lift.liftName,
             currentWeight: lift.currentWeight,
             setCount: lift.setCount,
-            platesPerSide: calculatePlates(
-              lift.currentWeight,
-              barWeight,
-              availablePlates,
-            ).perSide,
-            warmups: generateWarmupSets(
-              lift.currentWeight,
-              barWeight,
-              lift.roundTo,
-            ),
+            roundTo: lift.roundTo,
           }))}
         />
       )}
