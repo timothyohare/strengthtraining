@@ -3,7 +3,8 @@ Description: >
   Amplify Hosting SSR compute role for Lift5. The Next.js server code assumes
   this role at runtime to reach DynamoDB. Least privilege: only the actions the
   app issues (GetCommand, PutCommand, QueryCommand, UpdateCommand for session
-  revocation on logout) on the single Lift5 table.
+  revocation on logout, DeleteCommand for rest alerts) on the single Lift5
+  table, plus invoking the rest-push function (infra/rest-push.yaml).
   Cognito login uses the app client secret, not IAM, so no Cognito permissions.
 
 Parameters:
@@ -35,7 +36,15 @@ Resources:
                   - dynamodb:PutItem
                   - dynamodb:Query
                   - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
                 Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/lift5-${StageName}
+        - PolicyName: lift5-rest-push-invoke
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:lift5-rest-push-${StageName}
 
 Outputs:
   ComputeRoleArn:

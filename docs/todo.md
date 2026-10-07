@@ -48,7 +48,7 @@ plain CloudFormation or CDK instead. This repo follows that pattern:
             commands:
               # Console env vars exist only at build time; this makes them visible to
               # the SSR runtime. None are NEXT_PUBLIC_, so none reach the browser.
-              - env | grep -E '^(COGNITO_|SESSION_SECRET|DYNAMODB_TABLE)' >> .env.production
+              - env | grep -E '^(COGNITO_|SESSION_SECRET|DYNAMODB_TABLE|VAPID_PUBLIC_KEY|REST_PUSH_FUNCTION)' >> .env.production
               - pnpm run build
         artifacts:
           baseDirectory: .next
@@ -258,8 +258,25 @@ in a real browser.
   the same type, cleared on finish. Per device only
 - [x] Rest timer keeps real time while the page is hidden — stores the end time and works the
   remainder out from the clock; no late beep on return
-- [ ] Rest-over notification while the app is in the background (iOS Web Push: Home Screen
-  app, server-sent at rest end)
+- [ ] Rest-over notification while the app is in the background — **code done, not yet
+  deployed.** iOS pauses a backgrounded web app, so the server sends it: each rest start calls
+  `scheduleRestAlert` (`app/rest-alerts/actions.ts`), which writes a `REST_TIMER` item and
+  async-invokes `lift5-rest-push-dev` (`app/lambda/rest-push/index.mjs`,
+  `infra/rest-push.yaml`). The Lambda polls that item every 5s (so Skip/+30s/next set
+  supersede it), then sends an empty VAPID-signed Web Push to each `PUSHSUB#` item;
+  `public/sw.js` shows the text. Settings → Rest alerts turns it on per device (iPhone: Home
+  Screen app only). Verified locally: unit tests, plus the real handler against DynamoDB Local
+  and a fake push service (on-time send, signature, skip, supersede, 410 cleanup). Not
+  verifiable here: a real subscription (automated Chrome can't register for push) — test on
+  the iPhone after deploy. Deploy steps:
+  1. VAPID keys: generate a P-256 pair; the private key goes only into the stack parameter
+     (keep a copy in the password manager; losing it just means re-enabling alerts per device)
+  2. `aws cloudformation deploy --template-file infra/rest-push.yaml --stack-name
+     lift5-rest-push --capabilities CAPABILITY_NAMED_IAM --parameter-overrides
+     VapidPublicKey=… VapidPrivateKey=…`, then `infra/deploy-rest-push.sh`
+  3. Redeploy `infra/amplify-role.yaml` (adds `DeleteItem` and `lambda:InvokeFunction`)
+  4. Amplify env vars `VAPID_PUBLIC_KEY` and `REST_PUSH_FUNCTION=lift5-rest-push-dev`, and
+     add both to the build spec's `env | grep` line (§1)
 - [ ] Self-service invite flow for a second user
 - [ ] Export workout history (CSV/JSON)
 - [ ] Additional programs (Madcow, custom routines) — explicitly out of scope until v1 is used for a few weeks

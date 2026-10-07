@@ -1,5 +1,6 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -44,6 +45,11 @@ export const userPk = (userId: string) => `USER#${userId}`;
 export const profileSk = () => "PROFILE";
 export const liftSk = (liftName: string) => `LIFT#${liftName}`;
 export const settingsSk = () => "SETTINGS";
+// One per device that turned on rest alerts, keyed by a hash of its push
+// endpoint (endpoints are long URLs). Read by lambda/rest-push too.
+export const pushSubSk = (endpointHash: string) => `PUSHSUB#${endpointHash}`;
+// The running rest timer, at most one per user. Read by lambda/rest-push.
+export const restTimerSk = () => "REST_TIMER";
 // completedAt (an ISO timestamp) sits between the date and the random id so
 // two sessions on the same date sort in the order they were finished.
 export const sessionSk = (
@@ -270,4 +276,75 @@ export async function getRecentLiftResults(
     if (results.length >= count) break;
   }
   return results;
+}
+
+// ---- Rest alerts (lambda/rest-push reads these too) ----------------------
+
+export interface PushSubscriptionItem {
+  endpoint: string;
+  createdAt: string;
+}
+
+export async function putPushSubscription(
+  userId: string,
+  endpointHash: string,
+  sub: PushSubscriptionItem,
+) {
+  await ddb.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: userPk(userId), SK: pushSubSk(endpointHash), ...sub },
+    }),
+  );
+}
+
+export async function deletePushSubscription(
+  userId: string,
+  endpointHash: string,
+) {
+  await ddb.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: userPk(userId), SK: pushSubSk(endpointHash) },
+    }),
+  );
+}
+
+export async function hasPushSubscriptions(userId: string) {
+  const res = await ddb.send(
+    new QueryCommand({
+      TableName: TABLE_NAME,
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+      ExpressionAttributeValues: {
+        ":pk": userPk(userId),
+        ":prefix": "PUSHSUB#",
+      },
+      Limit: 1,
+    }),
+  );
+  return (res.Items ?? []).length > 0;
+}
+
+export interface RestTimerItem {
+  timerId: string;
+  /** Unix ms, by the server's clock. */
+  endsAt: number;
+}
+
+export async function putRestTimer(userId: string, timer: RestTimerItem) {
+  await ddb.send(
+    new PutCommand({
+      TableName: TABLE_NAME,
+      Item: { PK: userPk(userId), SK: restTimerSk(), ...timer },
+    }),
+  );
+}
+
+export async function deleteRestTimer(userId: string) {
+  await ddb.send(
+    new DeleteCommand({
+      TableName: TABLE_NAME,
+      Key: { PK: userPk(userId), SK: restTimerSk() },
+    }),
+  );
 }

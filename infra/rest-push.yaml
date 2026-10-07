@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Rest-over push alerts for Lift5. The app invokes this function
+  asynchronously when a rest starts; it waits out the rest (polling the
+  REST_TIMER item so a skip stops it) and sends an empty Web Push to each
+  PUSHSUB# item. Code is app/lambda/rest-push/index.mjs, uploaded by
+  infra/deploy-rest-push.sh -- the inline code below is only a placeholder
+  for the first create.
+  Cost: about 23 GB-seconds per 3-minute rest, inside the Lambda free tier
+  at one person's usage. Reserved concurrency caps runaway spend.
+
+Parameters:
+  StageName:
+    Type: String
+    Default: dev
+    Description: Must match the lift5-dynamodb stack.
+  VapidPublicKey:
+    Type: String
+    Description: base64url uncompressed P-256 public key (also the app's VAPID_PUBLIC_KEY).
+  VapidPrivateKey:
+    Type: String
+    NoEcho: true
+    Description: base64url P-256 private scalar. Never commit it.
+  VapidSubject:
+    Type: String
+    Default: https://strength.ohare.id.au
+    Description: VAPID contact; Apple requires an https URL or mailto.
+
+Resources:
+  FunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub lift5-rest-push-${StageName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: lift5-rest-push
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:Query
+                  - dynamodb:DeleteItem
+                Resource: !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/lift5-${StageName}
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt LogGroup.Arn
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/lift5-rest-push-${StageName}
+      RetentionInDays: 14
+
+  Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub lift5-rest-push-${StageName}
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Handler: index.handler
+      MemorySize: 128
+      # The longest rest it can wait out; the app caps rests at 840s.
+      Timeout: 900
+      ReservedConcurrentExecutions: 5
+      Role: !GetAtt FunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref LogGroup
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Sub lift5-${StageName}
+          VAPID_PUBLIC_KEY: !Ref VapidPublicKey
+          VAPID_PRIVATE_KEY: !Ref VapidPrivateKey
+          VAPID_SUBJECT: !Ref VapidSubject
+      Code:
+        ZipFile: |
+          export const handler = async () => {
+            throw new Error("Placeholder: run infra/deploy-rest-push.sh");
+          };
+
+  # A rest alert is useless late: don't retry, and drop it if it queued.
+  InvokeConfig:
+    Type: AWS::Lambda::EventInvokeConfig
+    Properties:
+      FunctionName: !Ref Function
+      Qualifier: $LATEST
+      MaximumRetryAttempts: 0
+      MaximumEventAgeInSeconds: 60
+
+Outputs:
+  FunctionName:
+    Value: !Ref Function
+  FunctionArn:
+    Value: !GetAtt Function.Arn

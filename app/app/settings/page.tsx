@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/schema";
 import { Screen, ScreenHeader } from "../BottomNav";
 import { switchUnits, saveSettings } from "./actions";
+import { RestAlerts } from "./RestAlerts";
 
 export default async function SettingsPage() {
   // Defensive check, same as app/today/page.tsx.
@@ -136,6 +137,17 @@ export default async function SettingsPage() {
           Save settings
         </button>
       </form>
+
+      {process.env.VAPID_PUBLIC_KEY && (
+        <section className={card}>
+          <h2 className={cardTitle}>Rest alerts</h2>
+          <p className="mt-1 text-sm text-muted">
+            A notification when your rest is over, even with the phone locked
+            or another app open.
+          </p>
+          <RestAlerts vapidPublicKey={process.env.VAPID_PUBLIC_KEY} />
+        </section>
+      )}
 
       <section className={card}>
         <h2 className={cardTitle}>Password</h2>

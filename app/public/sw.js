@@ -35,3 +35,30 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+// Rest-over alerts (lambda/rest-push). The pushes carry no payload, so the
+// text lives here. Safari revokes push permission from a site whose pushes
+// don't show a notification, so every push shows one, even when the app is
+// open (the in-page beep plays then too; the shared tag keeps it to one).
+self.addEventListener("push", (event) => {
+  event.waitUntil(
+    self.registration.showNotification("Rest over", {
+      body: "Time for your next set.",
+      tag: "rest-timer",
+      renotify: true,
+      icon: "/icon.svg",
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windows) => {
+        const open = windows.find((w) => "focus" in w);
+        return open ? open.focus() : self.clients.openWindow("/today");
+      }),
+  );
+});

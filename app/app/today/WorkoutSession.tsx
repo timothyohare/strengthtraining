@@ -8,6 +8,10 @@ import {
   type FinishWorkoutResult,
   type SetResult,
 } from "./actions";
+import {
+  cancelRestAlert,
+  scheduleRestAlert,
+} from "../rest-alerts/actions";
 import { REPS_PER_SET } from "@/lib/program-engine/workouts";
 import type { WorkoutType } from "@/lib/program-engine/schedule";
 import { generateWarmupSets } from "@/lib/program-engine/warmup";
@@ -314,6 +318,14 @@ export function WorkoutSession({
     const t = Date.now();
     setNow(t);
     setRestEndsAt(t + seconds * 1000);
+    // Push alert for when the app is in the background. Best-effort: the
+    // on-screen timer works without it.
+    scheduleRestAlert(seconds).catch(() => {});
+  }
+
+  function stopRest() {
+    setRestEndsAt(null);
+    cancelRestAlert().catch(() => {});
   }
 
   const setList = Object.values(sets);
@@ -355,7 +367,7 @@ export function WorkoutSession({
       sessionId,
       results,
     });
-    setRestEndsAt(null);
+    stopRest();
     setSummary(result);
   }
 
@@ -588,7 +600,7 @@ export function WorkoutSession({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setRestEndsAt(null)}
+                  onClick={stopRest}
                   className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-bg"
                 >
                   Skip
