@@ -261,7 +261,8 @@ in a real browser.
 - [x] Rest-over notification while the app is in the background — **deployed 2026-10-08**
   (stack `lift5-rest-push`, function `lift5-rest-push-dev`; the VAPID private key lives only
   in that function's environment — if it's ever lost, generate a new pair, redeploy, and
-  re-enable alerts on each device). iOS pauses a backgrounded web app, so the server sends it: each rest start calls
+  re-enable alerts on each device). Confirmed working on the iPhone 2026-10-08. How it
+  works, deploying, and troubleshooting: `docs/workout-screen.md`. iOS pauses a backgrounded web app, so the server sends it: each rest start calls
   `scheduleRestAlert` (`app/rest-alerts/actions.ts`), which writes a `REST_TIMER` item and
   async-invokes `lift5-rest-push-dev` (`app/lambda/rest-push/index.mjs`,
   `infra/rest-push.yaml`). The Lambda polls that item every 5s (so Skip/+30s/next set

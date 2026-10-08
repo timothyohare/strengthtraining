@@ -42,6 +42,8 @@ this project even before a formal `harness.json` binding exists:
 - [ ] Manual, on a real phone over cellular (not just Wi-Fi/desktop): full workout flow,
       including rest timer alert and plate calculator display, checking for layout/tap-target
       issues at actual gym-use conditions (one-handed, screen brightness, etc.)
+- [x] Rest alert arrives on a real iPhone (Home Screen app) — confirmed 2026-10-08 with
+      Settings → Send a test. How to test and troubleshoot it: `workout-screen.md`
 
 ## 4. Cost verification
 

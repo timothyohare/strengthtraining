@@ -50,8 +50,8 @@ Program mechanics researched and confirmed as of 2026:
 - **3x5 fallback:** a second deload on the same lift drops it from 5x5 to 3x5 (3 sets of 5) permanently for that lift, per the standard program rule.
 - **Warm-up calculator:** given a work-set weight, generates a ramp-up sequence of warm-up sets (e.g., empty bar, then increasing percentages) — this was specifically called out as paywalled in the real app, so it's a must-have here.
 - **Plate calculator:** given target weight, bar weight, and available plates, shows plates-per-side.
-- **Rest timer:** countdown timer between sets (default ~3–5 min, configurable), with an audible/vibration alert.
-- **Set logging:** big tap targets to mark a set done/failed, with weight x reps visible at a glance; minimal typing required mid-workout.
+- **Rest timer:** countdown timer between sets (default ~3–5 min, configurable), with an audible/vibration alert, plus an optional push notification when the rest ends with the app in the background (added 2026-10-08, see `workout-screen.md`).
+- **Set logging:** big tap targets to mark a set done/failed, with weight x reps visible at a glance; minimal typing required mid-workout. A lift's weight can be adjusted from the workout screen, and logged sets survive leaving the page (see `workout-screen.md`).
 - **Workout history / logbook:** past sessions, per-lift weight history.
 - **Progress charts:** weight-over-time per lift.
 - **Settings:** units (kg/lb), bar weight, available plate sizes, per-lift increments, rest timer duration, starting weights.
