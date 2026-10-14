@@ -15,5 +15,6 @@
     "AWS_REGION": "ap-southeast-2",
     "SESSION_SECRET": "gate-verify-only-secret",
     "GATE_BASE_URL": "http://localhost:3100"
-  }
+  },
+  "mutation": "cd app && pnpm exec stryker run"
 }
