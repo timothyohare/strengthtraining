@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Mutation testing (CHG-0034): per-run report + sandbox ignored; incremental history committed
+.stryker-tmp/
+reports/mutation/mutation.json

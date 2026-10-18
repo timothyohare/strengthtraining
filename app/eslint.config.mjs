@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Mutation testing (CHG-0034): Stryker sandbox copies + reports.
+    ".stryker-tmp/**",
+    "reports/**",
   ]),
 ]);
 
