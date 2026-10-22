@@ -20,6 +20,7 @@ import { stepSizes, stepWeight } from "@/lib/weight-adjust";
 import type { Units } from "@/lib/units";
 import { nextSetState, type SetState } from "@/lib/set-tap";
 import { localIsoDate } from "@/lib/dates";
+import { withTimeout } from "@/lib/with-timeout";
 import {
   parseSavedWorkout,
   restoreSets,
@@ -82,6 +83,10 @@ function formatPlates(perSide: number[], units: Units) {
     : "Empty bar";
 }
 
+// Long enough to ride out a cold start (~2.5 s seen in prod), short enough
+// that a lost response doesn't leave the button stuck on "Saving…".
+const SAVE_TIMEOUT_MS = 10_000;
+
 function WeightAdjuster({
   liftName,
   initialWeight,
@@ -124,7 +129,8 @@ function WeightAdjuster({
     setSaving(true);
     setError(null);
     try {
-      await setLiftWeight(liftName, weight);
+      // Safe to retry: saving the same weight twice is idempotent.
+      await withTimeout(setLiftWeight(liftName, weight), SAVE_TIMEOUT_MS);
       onSaved(weight);
     } catch {
       setError("Couldn\u2019t save. Check your connection and try again.");

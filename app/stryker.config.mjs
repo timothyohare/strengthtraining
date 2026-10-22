@@ -13,7 +13,7 @@ const strykerConfig = {
   coverageAnalysis: 'perTest',
   mutate: [
     'lib/program-engine/{plates,progression,schedule,warmup}.ts',
-    'lib/{dates,password,push-endpoint,redirect,set-tap,weight-adjust,workout-progress}.ts',
+    'lib/{dates,password,push-endpoint,redirect,set-tap,weight-adjust,with-timeout,workout-progress}.ts',
   ],
   reporters: ['clear-text', 'progress', 'json'],
   jsonReporter: { fileName: 'reports/mutation/mutation.json' },
